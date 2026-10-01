@@ -523,3 +523,15 @@ details .totais { margin: .6rem 0 0; }
   overflow-wrap: anywhere;
 }
 .sim-titulo { color: var(--roxo-texto); }
+
+/* Campo de data no celular (iPhone/Android): tem largura mínima própria e passava da tela.
+   Os itens do grid e os campos precisam poder encolher. */
+.duas > *, .form label { min-width: 0; }
+input[type="date"], input[type="month"] {
+  min-width: 0; max-width: 100%; display: block;
+  -webkit-appearance: none; appearance: none;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="month"]::-webkit-date-and-time-value { text-align: left; }
+/* Na simulação, um campo por linha no celular. */
+@media (max-width: 480px) { .form-sim .duas { grid-template-columns: 1fr; } }
