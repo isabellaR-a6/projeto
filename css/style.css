@@ -535,3 +535,5 @@ input[type="date"]::-webkit-date-and-time-value,
 input[type="month"]::-webkit-date-and-time-value { text-align: left; }
 /* Na simulação, um campo por linha no celular. */
 @media (max-width: 480px) { .form-sim .duas { grid-template-columns: 1fr; } }
+
+body.salvando { cursor: progress; }

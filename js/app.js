@@ -100,7 +100,13 @@ function toast(msg, erro = false) {
 async function recarregar() { S.dados = await Store.carregarTudo(); }
 
 // Executa uma alteração, recarrega os dados e redesenha.
+// Só uma alteração por vez: um segundo toque enquanto a primeira ainda está salvando
+// (a internet do celular pode demorar) é ignorado, senão o registro era gravado em dobro.
+let salvando = false;
 async function executar(fn, sucesso) {
+  if (salvando) return false;
+  salvando = true;
+  document.body.classList.add('salvando');
   try {
     await fn();
     await recarregar();
@@ -111,6 +117,9 @@ async function executar(fn, sucesso) {
     console.error(e);
     toast(e.message || 'Algo deu errado.', true);
     return false;
+  } finally {
+    salvando = false;
+    document.body.classList.remove('salvando');
   }
 }
 
@@ -1400,11 +1409,21 @@ document.addEventListener('change', (e) => {
   if (sim && e.target.matches('select, input[type=radio]')) atualizarSimulacao(sim, true);
 });
 
-document.addEventListener('submit', (e) => {
+document.addEventListener('submit', async (e) => {
   const f = e.target.closest('form[data-form]');
   if (!f) return;
   e.preventDefault();
-  salvarForm(f);
+  if (f.dataset.enviando) return; // já está salvando este formulário
+  f.dataset.enviando = '1';
+  const botao = f.querySelector('button[type=submit]');
+  const texto = botao?.textContent;
+  if (botao) { botao.disabled = true; botao.textContent = 'Salvando…'; }
+  try {
+    await salvarForm(f);
+  } finally {
+    delete f.dataset.enviando;
+    if (botao?.isConnected) { botao.disabled = false; botao.textContent = texto; }
+  }
 });
 
 // Fecha o formulário ao tocar fora dele.
