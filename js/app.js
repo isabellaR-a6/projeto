@@ -437,8 +437,8 @@ function telaLancamentos() {
         : `fatura de ${mesCurto(ps[0].competencia)}`}`;
     } else if (i.lanc.tipo === 'despesa') detalhe += ` · ${nomeForma(formaDe(i.lanc))}`;
     return `
-        <li class="linha clicavel" data-acao="editar-lancamento" data-id="${i.lanc.id}" tabindex="0" role="button">
-          <span class="bolinha" style="background:${esc(corDoLancamento(i.lanc))}"></span>
+        <li class="linha clicavel${i.lanc.tipo === 'despesa' && lancamentoPago(i.lanc) ? ' feito' : ''}" data-acao="editar-lancamento" data-id="${i.lanc.id}" tabindex="0" role="button">
+          ${i.lanc.tipo === 'despesa' ? bolinhaPago(i.lanc) : `<span class="bolinha" style="background:${esc(corDoLancamento(i.lanc))}"></span>`}
           <div class="linha-texto"><strong>${esc(i.lanc.descricao)}</strong><span class="sutil">${detalhe}</span></div>
           <strong class="linha-valor ${i.lanc.tipo === 'receita' ? 'positivo' : ''}">${i.lanc.tipo === 'receita' ? '+' : '−'} ${dinheiro(i.valor)}</strong>
         </li>`;
@@ -455,6 +455,47 @@ function telaLancamentos() {
         </ul>
       </details>` : ''}
     </section>`;
+}
+
+/* ---------- Marcar gasto como pago ---------- */
+// Pix/débito/dinheiro: marcação simples (coluna "pago").
+// Crédito: pago quando todas as parcelas estão quitadas na fatura.
+function lancamentoPago(l) {
+  const cartao = S.dados.cartoes.find((c) => c.id === l.cartao_id);
+  if (!cartao) return l.pago === true;
+  return parcelasDe(l, cartao).every((p) => parcelaQuitada(S.dados, p));
+}
+
+function bolinhaPago(l) {
+  const pago = lancamentoPago(l);
+  const rotulo = pago ? 'Desmarcar como pago' : 'Marcar como pago';
+  return `<button class="btn-check pequeno${pago ? ' marcado' : ''}" style="--cor-check:${esc(corDoLancamento(l))}" data-acao="marcar-lancamento" data-id="${l.id}" aria-label="${rotulo}" title="${rotulo}">${icone('check')}</button>`;
+}
+
+async function alternarPagoLancamento(id) {
+  const d = S.dados;
+  const l = d.lancamentos.find((x) => x.id === id);
+  if (!l) return;
+  const cartao = d.cartoes.find((c) => c.id === l.cartao_id);
+  const pago = lancamentoPago(l);
+  if (!cartao) {
+    await executar(() => Store.atualizar('lancamentos', id, { pago: !pago }), pago ? 'Desmarcado' : 'Marcado como pago');
+    return;
+  }
+  const parcelas = parcelasDe(l, cartao);
+  await executar(async () => {
+    if (pago) {
+      // Desfaz só o que foi marcado compra a compra (fatura inteira paga continua paga).
+      for (const p of parcelas) {
+        const x = pagamentoItem(d, p);
+        if (x) await Store.remover('itens_pagos', x.id);
+      }
+    } else {
+      for (const p of parcelas) {
+        if (!parcelaQuitada(d, p)) await Store.inserir('itens_pagos', { lancamento_id: id, competencia: p.competencia, pago_em: hoje() });
+      }
+    }
+  }, pago ? 'Compra voltou para pendente' : 'Compra marcada como paga');
 }
 
 /* ---------- Entradas ---------- */
@@ -1443,6 +1484,7 @@ document.addEventListener('click', (e) => {
   if (check.disabled) return;
   if (check.dataset.acao === 'pagar-fatura') alternarFatura(check.dataset.cartao, check.dataset.comp);
   else if (check.dataset.acao === 'pagar-item') alternarItem(check.dataset.lanc, check.dataset.comp);
+  else if (check.dataset.acao === 'marcar-lancamento') alternarPagoLancamento(check.dataset.id);
   else alternarConta(check.dataset.conta, check.dataset.comp);
 }, true);
 

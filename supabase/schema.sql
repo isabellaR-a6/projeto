@@ -25,6 +25,7 @@ create table if not exists public.lancamentos (
   cartao_id uuid references public.cartoes on delete cascade,
   parcelas smallint not null default 1 check (parcelas between 1 and 48),
   parcelas_pagas smallint not null default 0 check (parcelas_pagas >= 0),
+  pago boolean not null default false,
   created_at timestamptz not null default now()
 );
 

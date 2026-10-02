@@ -262,11 +262,12 @@ h2 { font-size: 1.05rem; font-weight: 650; }
 
 .btn-check {
   width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center;
-  border: 2px solid var(--lilas); background: transparent; color: transparent;
+  padding: 0; line-height: 0;
+  border: 2px solid var(--cor-check, var(--lilas)); background: transparent; color: transparent;
 }
-.btn-check:hover { border-color: var(--roxo); color: var(--roxo); }
-.btn-check .ic { width: 18px; height: 18px; }
-.btn-check.marcado { background: var(--roxo); border-color: var(--roxo); color: #fff; }
+.btn-check:hover { border-color: var(--cor-check, var(--roxo)); color: var(--cor-check, var(--roxo)); }
+.btn-check .ic { width: 18px; height: 18px; display: block; }
+.btn-check.marcado { background: var(--cor-check, var(--roxo)); border-color: var(--cor-check, var(--roxo)); color: #fff; }
 @media (prefers-color-scheme: dark) { .btn-check.marcado { color: #1b1030; } }
 
 .chip {
@@ -469,7 +470,8 @@ strong.perigo-texto { color: var(--perigo); }
 
 /* Pagamento parcial da fatura */
 .plastico-pago { font-size: .85rem; font-weight: 600; background: rgba(255, 255, 255, .16); padding: .2rem .6rem; border-radius: 999px; width: max-content; margin: .2rem 0; }
-.btn-check.pequeno { width: 30px; height: 30px; }
+.btn-check.pequeno { width: 28px; height: 28px; border-width: 2px; }
+.btn-check.pequeno .ic { width: 16px; height: 16px; }
 .btn-check:disabled { cursor: default; opacity: .7; }
 details .sutil.pequeno { margin: .1rem 0 .3rem; }
 details .totais { margin: .6rem 0 0; }
@@ -552,3 +554,7 @@ body.salvando { cursor: progress; }
 .colunas-meses .coluna-mes { font-size: .72rem; color: var(--texto-2); text-transform: capitalize; }
 .colunas-meses li.atual .coluna-mes { color: var(--roxo-texto); font-weight: 700; }
 .parcelas-antigas { margin-top: .8rem; }
+/* Bolinha na cor do cartão (cor fixa escura): ✓ branco também no modo escuro. */
+@media (prefers-color-scheme: dark) { .btn-check.marcado[style*="#"] { color: #fff; } }
+/* Pontinho das entradas ocupa o mesmo espaço da bolinha de pago, para os nomes ficarem alinhados. */
+.lista .linha > .bolinha:first-child { margin: 0 9px; }
