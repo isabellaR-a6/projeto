@@ -248,6 +248,9 @@ function resumoMes(d, comp) {
   const doMes = (l) => l.data.slice(0, 7) === comp;
   const receitas = d.lancamentos.filter((l) => l.tipo === 'receita' && doMes(l));
   const avulsas = d.lancamentos.filter((l) => l.tipo === 'despesa' && !l.cartao_id && doMes(l));
+  // Compras no cartão feitas neste mês (valor total), mesmo que a fatura vença no mês seguinte.
+  const idsCartoes = new Set(d.cartoes.map((c) => c.id));
+  const comprasCredito = d.lancamentos.filter((l) => l.tipo === 'despesa' && idsCartoes.has(l.cartao_id) && doMes(l));
   const parcelasMes = parcelas.filter((p) => p.competencia === comp);
   const faturas = d.cartoes.map((c) => fatura(d, c, comp, parcelas));
   const contas = contasDoMes(d, comp);
@@ -261,12 +264,13 @@ function resumoMes(d, comp) {
 
   const porCategoria = {};
   for (const l of avulsas) porCategoria[l.categoria] = soma([porCategoria[l.categoria], l.valor]);
-  for (const p of parcelasMes) porCategoria[p.lanc.categoria] = soma([porCategoria[p.lanc.categoria], p.valor]);
+  for (const l of comprasCredito) porCategoria[l.categoria] = soma([porCategoria[l.categoria], l.valor]);
 
   const gastos = soma([totalAvulsas, totalFaturas]);
   const guardado = guardadoNoMes(d, comp);
   return {
-    comp, parcelas, receitas, avulsas, parcelasMes, faturas, contas, porCategoria,
+    comp, parcelas, receitas, avulsas, comprasCredito, parcelasMes,
+    totalComprasCredito: soma(comprasCredito.map((l) => l.valor)), faturas, contas, porCategoria,
     totalReceitas,
     totalContasPendentes,
     gastos,

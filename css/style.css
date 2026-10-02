@@ -537,3 +537,18 @@ input[type="month"]::-webkit-date-and-time-value { text-align: left; }
 @media (max-width: 480px) { .form-sim .duas { grid-template-columns: 1fr; } }
 
 body.salvando { cursor: progress; }
+
+/* Valores de itens pagos: sem risco (com os valores escondidos, o risco cortava as bolinhas torto). */
+.linha.feito .linha-valor { text-decoration: none; opacity: .55; }
+
+/* ---------- Entradas ---------- */
+.destaque.entrada { background: linear-gradient(135deg, #3b0764 0%, #6d28d9 55%, #059669 130%); }
+.barra span.verde { background: linear-gradient(90deg, #10b981, #34d399); }
+.colunas-meses { list-style: none; margin: .6rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: .4rem; align-items: end; height: 150px; }
+.colunas-meses li { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: .25rem; height: 100%; min-width: 0; }
+.colunas-meses .coluna { align-self: end; width: 70%; max-width: 34px; border-radius: 8px 8px 3px 3px; background: var(--lilas); }
+.colunas-meses li.atual .coluna { background: linear-gradient(180deg, #a78bfa, var(--roxo)); }
+.colunas-meses .coluna-valor { font-size: .66rem; color: var(--texto-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.colunas-meses .coluna-mes { font-size: .72rem; color: var(--texto-2); text-transform: capitalize; }
+.colunas-meses li.atual .coluna-mes { color: var(--roxo-texto); font-weight: 700; }
+.parcelas-antigas { margin-top: .8rem; }

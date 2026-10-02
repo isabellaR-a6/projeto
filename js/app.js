@@ -65,6 +65,7 @@ const ICONES = {
   editar: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   simular: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h4"/>',
+  entradas: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/>',
   sino: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   escudo: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
 };
@@ -76,7 +77,7 @@ const TELAS = [
   { id: 'lancamentos', nome: 'Lançamentos' },
   { id: 'cartoes', nome: 'Cartões' },
   { id: 'simular', nome: 'Simular' },
-  { id: 'contas', nome: 'Contas' },
+  { id: 'entradas', nome: 'Entradas' },
   { id: 'metas', nome: 'Metas' },
 ];
 
@@ -226,6 +227,7 @@ function renderTela() {
     case 'cartoes': return telaCartoes();
     case 'simular': return telaSimular();
     case 'contas': return telaContas();
+    case 'entradas': return telaEntradas();
     case 'metas': return telaMetas();
     default: return telaInicio();
   }
@@ -274,7 +276,6 @@ function telaInicio() {
         <p class="sutil">Alguns passos e o painel já começa a te mostrar para onde vai o dinheiro.</p>
         <ol class="passos">
           <li><button class="link" data-acao="novo-cartao">Cadastre seus cartões</button> com limite, dia de fechamento e de vencimento.</li>
-          <li><button class="link" data-acao="nova-conta">Cadastre suas contas fixas</button>, como aluguel, internet e academia.</li>
           <li><button class="link" data-acao="novo-lancamento">Lance seu salário e seus gastos</button> pelo botão <strong>+</strong>.</li>
           <li><button class="link" data-acao="nova-meta">Crie uma meta</button> para juntar dinheiro: viagem, reserva, um objetivo seu.</li>
         </ol>
@@ -320,7 +321,7 @@ function telaInicio() {
 
     <div class="grade-2">
       <section class="bloco">
-        <div class="bloco-topo"><h2>Vencimentos</h2><button class="link" data-acao="tela" data-tela="contas">Contas fixas</button></div>
+        <div class="bloco-topo"><h2>Vencimentos</h2></div>
         ${vencimentos.length ? `<ul class="lista">${vencimentos.map(linhaVencimento).join('')}</ul>`
     : '<p class="vazio">Nada para pagar neste mês.</p>'}
       </section>
@@ -335,6 +336,7 @@ function telaInicio() {
     <div class="grade-2">
       <section class="bloco">
         <h2>Para onde foi o dinheiro</h2>
+        ${r.totalComprasCredito ? `<p class="sutil pequeno">Inclui ${dinheiro(r.totalComprasCredito)} comprados no crédito este mês (eles são pagos nas faturas do cartão).</p>` : ''}
         ${categorias.length ? `<ul class="categorias">${categorias.map(([id, valor]) => `
           <li>
             <div class="cat-linha"><span>${esc(categoria(id).nome)}</span><strong>${dinheiro(valor)}</strong></div>
@@ -402,10 +404,11 @@ function linhaVencimento({ tipo, item }) {
 function telaLancamentos() {
   const d = S.dados;
   const r = resumoMes(d, S.mes);
-  let itens = [
-    ...[...r.receitas, ...r.avulsas].map((l) => ({ lanc: l, valor: Number(l.valor), data: l.data })),
-    ...r.parcelasMes.map((p) => ({ lanc: p.lanc, valor: p.valor, data: p.lanc.data, parcela: p })),
-  ];
+  // Tudo o que foi feito neste mês, pela data. Compras no cartão aparecem no mês da compra,
+  // com a fatura em que caem; parcelas de compras de outros meses ficam numa lista à parte.
+  let itens = [...r.receitas, ...r.avulsas, ...r.comprasCredito]
+    .map((l) => ({ lanc: l, valor: Number(l.valor), data: l.data }));
+  const parcelasAntigas = r.parcelasMes.filter((p) => p.lanc.data.slice(0, 7) !== S.mes);
   if (S.filtro === 'receitas') itens = itens.filter((i) => i.lanc.tipo === 'receita');
   else if (S.filtro !== 'todos') itens = itens.filter((i) => formaDe(i.lanc) === S.filtro);
   const busca = S.busca.trim().toLowerCase();
@@ -425,13 +428,14 @@ function telaLancamentos() {
       <input class="busca" type="search" placeholder="Buscar por descrição ou categoria" value="${esc(S.busca)}" data-campo="busca" aria-label="Buscar">
       <div class="totais"><span>Entradas <strong class="positivo">${dinheiro(entradas)}</strong></span><span>Saídas <strong>${dinheiro(saidas)}</strong></span></div>
       ${itens.length ? `<ul class="lista">${itens.map((i) => {
-    const p = i.parcela;
     let detalhe = `${dataCurta(i.data)} · ${esc(categoria(i.lanc.categoria).nome)}`;
-    if (i.lanc.tipo === 'despesa') detalhe += ` · ${nomeForma(formaDe(i.lanc))}`;
-    if (p) {
-      detalhe = `${esc(p.cartao.nome)} · compra ${dataCurta(i.data)}`;
-      if (p.total > 1) detalhe += ` · parcela ${p.numero}/${p.total} · termina em ${mesCurto(somarMeses(p.competencia, p.total - p.numero))}`;
-    }
+    const cartao = S.dados.cartoes.find((c) => c.id === i.lanc.cartao_id);
+    if (i.lanc.tipo === 'despesa' && cartao) {
+      const ps = parcelasDe(i.lanc, cartao);
+      detalhe = `${dataCurta(i.data)} · ${esc(cartao.nome)} · ${ps.length > 1
+        ? `${ps.length}x de ${dinheiro(ps[ps.length - 1].valor)} · faturas de ${mesCurto(ps[0].competencia)} a ${mesCurto(ps[ps.length - 1].competencia)}`
+        : `fatura de ${mesCurto(ps[0].competencia)}`}`;
+    } else if (i.lanc.tipo === 'despesa') detalhe += ` · ${nomeForma(formaDe(i.lanc))}`;
     return `
         <li class="linha clicavel" data-acao="editar-lancamento" data-id="${i.lanc.id}" tabindex="0" role="button">
           <span class="bolinha" style="background:${esc(corDoLancamento(i.lanc))}"></span>
@@ -439,7 +443,73 @@ function telaLancamentos() {
           <strong class="linha-valor ${i.lanc.tipo === 'receita' ? 'positivo' : ''}">${i.lanc.tipo === 'receita' ? '+' : '−'} ${dinheiro(i.valor)}</strong>
         </li>`;
   }).join('')}</ul>` : '<p class="vazio">Nenhum lançamento por aqui.</p>'}
+      ${parcelasAntigas.length && ['todos', 'credito'].includes(S.filtro) && !busca ? `
+      <details class="parcelas-antigas">
+        <summary>Parcelas de compras de outros meses que vencem em ${nomeMes(S.mes, false)} (${dinheiro(soma(parcelasAntigas.map((p) => p.valor)))})</summary>
+        <ul class="lista compacta">${parcelasAntigas.map((p) => `
+          <li class="linha clicavel" data-acao="editar-lancamento" data-id="${p.lanc.id}" tabindex="0" role="button">
+            <span class="bolinha" style="background:${esc(p.cartao.cor)}"></span>
+            <div class="linha-texto"><strong>${esc(p.lanc.descricao)}</strong><span class="sutil">${esc(p.cartao.nome)} · parcela ${p.numero}/${p.total} · comprado em ${dataCurta(p.lanc.data)}/${p.lanc.data.slice(2, 4)}</span></div>
+            <strong class="linha-valor">− ${dinheiro(p.valor)}</strong>
+          </li>`).join('')}
+        </ul>
+      </details>` : ''}
     </section>`;
+}
+
+/* ---------- Entradas ---------- */
+function telaEntradas() {
+  const d = S.dados;
+  const r = resumoMes(d, S.mes);
+  const lista = [...r.receitas].sort((a, b) => b.data.localeCompare(a.data));
+  const porCategoria = {};
+  for (const l of lista) porCategoria[l.categoria] = soma([porCategoria[l.categoria], l.valor]);
+  const categorias = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
+  // Últimos 6 meses, para comparar.
+  const meses = Array.from({ length: 6 }, (_, i) => somarMeses(S.mes, i - 5));
+  const totais = meses.map((comp) => soma(d.lancamentos.filter((l) => l.tipo === 'receita' && l.data.slice(0, 7) === comp).map((l) => l.valor)));
+  const maior = Math.max(...totais, 1);
+  const anterior = totais[4];
+  const variacao = anterior ? Math.round(((r.totalReceitas - anterior) / anterior) * 100) : null;
+
+  return `
+    <div class="bloco-topo"><h2>Entradas de ${nomeMes(S.mes, false)}</h2><button class="btn" data-acao="nova-entrada">${icone('mais')} Nova entrada</button></div>
+    <section class="destaque entrada">
+      <span class="rotulo">Total que entrou em ${nomeMes(S.mes, false)}</span>
+      <strong class="valor-grande">${dinheiro(r.totalReceitas)}</strong>
+      <span class="conta-saldo">${variacao === null ? 'Sem entradas no mês anterior para comparar.' : `${variacao >= 0 ? '+' : ''}${variacao}% em relação a ${nomeMes(meses[4], false)} (${dinheiro(anterior)})`}</span>
+    </section>
+    <section class="numeros dois">
+      <div class="numero"><span class="rotulo">Já saiu do que entrou</span><strong>${dinheiro(soma([r.totalReceitas, -r.saldo]))}</strong></div>
+      <div class="numero"><span class="rotulo">Sobra prevista</span><strong class="${r.saldo < 0 ? 'perigo-texto' : 'positivo'}">${dinheiro(r.saldo)}</strong></div>
+    </section>
+    <div class="grade-2">
+      <section class="bloco">
+        <h2>Lista</h2>
+        ${lista.length ? `<ul class="lista">${lista.map((l) => `
+          <li class="linha clicavel" data-acao="editar-lancamento" data-id="${l.id}" tabindex="0" role="button">
+            <span class="bolinha" style="background:var(--positivo)"></span>
+            <div class="linha-texto"><strong>${esc(l.descricao)}</strong><span class="sutil">${dataCurta(l.data)} · ${esc(categoria(l.categoria).nome)}</span></div>
+            <strong class="linha-valor positivo">+ ${dinheiro(l.valor)}</strong>
+          </li>`).join('')}</ul>` : `<p class="vazio">Nenhuma entrada em ${nomeMes(S.mes, false)}. <button class="link" data-acao="nova-entrada">Lançar uma entrada</button></p>`}
+      </section>
+      <section class="bloco">
+        <h2>De onde veio</h2>
+        ${categorias.length ? `<ul class="categorias">${categorias.map(([id, valor]) => `
+          <li>
+            <div class="cat-linha"><span>${esc(categoria(id).nome)}</span><strong>${dinheiro(valor)}</strong></div>
+            <div class="barra"><span class="verde" style="width:${pct(valor, r.totalReceitas)}%"></span></div>
+          </li>`).join('')}</ul>` : '<p class="vazio">Nada por aqui ainda.</p>'}
+        <h3 class="subtitulo">Últimos 6 meses</h3>
+        <ul class="colunas-meses">${meses.map((comp, i) => `
+          <li class="${comp === S.mes ? 'atual' : ''}">
+            <span class="coluna-valor">${S.ocultar ? '•••' : NUMERO.format(totais[i]).replace(/,\d\d$/, '')}</span>
+            <span class="coluna" style="height:${Math.max(4, Math.round((totais[i] / maior) * 100))}%"></span>
+            <span class="coluna-mes">${MESES[Number(comp.slice(5)) - 1].slice(0, 3)}</span>
+          </li>`).join('')}
+        </ul>
+      </section>
+    </div>`;
 }
 
 /* ---------- Cartões ---------- */
@@ -798,15 +868,16 @@ const segmentado = (nome, opcoes, atual, rotulo) => `
     ${opcoes.map(([valor, texto]) => `<label><input type="radio" name="${nome}" value="${valor}" ${valor === atual ? 'checked' : ''}><span>${texto}</span></label>`).join('')}
   </div>`;
 
-function formLancamento(l) {
-  const tipo = l?.tipo || 'despesa';
+// l = lançamento existente (edição); padrao = valores iniciais de um novo (ex.: { tipo: 'receita' }).
+function formLancamento(l, padrao = {}) {
+  const tipo = l?.tipo || padrao.tipo || 'despesa';
   const forma = l ? formaDe(l) || 'pix' : 'pix';
   const parcelado = (l?.parcelas || 1) > 1;
   const cartoes = S.dados.cartoes;
   const dataPadrao = S.mes === compAtual() ? hoje() : `${S.mes}-01`;
   abrirModal(`
     <form class="form" data-form="lancamento" data-id="${l?.id || ''}">
-      <h2>${l ? 'Editar lançamento' : 'Novo lançamento'}</h2>
+      <h2>${l ? 'Editar lançamento' : padrao.tipo === 'receita' ? 'Nova entrada' : 'Novo lançamento'}</h2>
       ${segmentado('tipo', [['despesa', 'Gasto'], ['receita', 'Entrada']], tipo, 'Tipo')}
       <label>Valor${l?.parcelas > 1 ? ' total da compra' : ''}<input name="valor" inputmode="numeric" data-dinheiro placeholder="0,00" value="${valorParaCampo(l?.valor)}" required autofocus></label>
       <label>Descrição<input name="descricao" placeholder="Ex.: Mercado do mês" value="${esc(l?.descricao)}" maxlength="80" required></label>
@@ -1308,6 +1379,7 @@ document.addEventListener('click', async (e) => {
     case 'novo-lancamento': formLancamento(); break;
     case 'novo-cartao': formCartao(); break;
     case 'nova-conta': formConta(); break;
+    case 'nova-entrada': formLancamento(null, { tipo: 'receita' }); break;
     case 'nova-meta': formMeta(); break;
     case 'editar-lancamento': formLancamento(encontrar('lancamentos', el.dataset.id)); break;
     case 'editar-cartao': formCartao(encontrar('cartoes', el.dataset.id)); break;
