@@ -1,0 +1,6 @@
+# Instalar:  pip install -r requirements.txt
+flet[all]==1.0.3
+supabase==2.32.0
+# Windows Hello (biometria no Windows); no Mac/Linux é ignorado
+winrt-Windows.Security.Credentials.UI==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation==3.2.1; sys_platform == "win32"
