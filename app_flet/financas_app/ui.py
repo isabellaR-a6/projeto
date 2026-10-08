@@ -145,7 +145,8 @@ def check(marcado: bool, on_click, cor=ROXO, tooltip: str = "", desativado: bool
 
 
 def linha(principal: str, detalhe: str, valor: str, *, inicio: ft.Control | None = None, fim: ft.Control | None = None,
-          cor_valor=None, riscado: bool = False, on_click=None, detalhe_valor: str = "") -> ft.Container:
+          cor_valor=None, riscado: bool = False, on_click=None, detalhe_valor: str = "",
+          abaixo: ft.Control | None = None) -> ft.Container:
     """Uma linha de lista: [bolinha] título e detalhe ........ valor [ação]."""
     estilo = ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH, decoration_color=LILAS) if riscado else None
     return ft.Container(
@@ -157,6 +158,7 @@ def linha(principal: str, detalhe: str, valor: str, *, inicio: ft.Control | None
                 ft.Text(principal, size=14.5, weight=ft.FontWeight.W_600, max_lines=2,
                         overflow=ft.TextOverflow.ELLIPSIS, style=estilo, color=TEXTO_2 if riscado else None),
                 sutil(detalhe, 12.5),
+                *([ft.Container(abaixo, padding=ft.Padding.only(top=4))] if abaixo else []),
             ]),
             ft.Column(spacing=0, horizontal_alignment=ft.CrossAxisAlignment.END, controls=[
                 numero_texto(valor, 15, color=cor_valor, opacity=0.55 if riscado else 1),

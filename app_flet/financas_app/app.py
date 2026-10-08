@@ -15,7 +15,7 @@ from .ui import AMBAR, LILAS, ROXO, ROXO_ESCURO, TEXTO_2, VERDE, VERMELHO
 
 TELAS = [
     ("inicio", "Início", ft.Icons.HOME_OUTLINED, ft.Icons.HOME_ROUNDED),
-    ("lancamentos", "Lançamentos", ft.Icons.RECEIPT_LONG_OUTLINED, ft.Icons.RECEIPT_LONG_ROUNDED),
+    ("lancamentos", "Extrato", ft.Icons.RECEIPT_LONG_OUTLINED, ft.Icons.RECEIPT_LONG_ROUNDED),
     ("cartoes", "Cartões", ft.Icons.CREDIT_CARD_OUTLINED, ft.Icons.CREDIT_CARD_ROUNDED),
     ("simular", "Simular", ft.Icons.CALCULATE_OUTLINED, ft.Icons.CALCULATE_ROUNDED),
     ("entradas", "Entradas", ft.Icons.SOUTH_WEST_OUTLINED, ft.Icons.SOUTH_WEST_ROUNDED),
@@ -80,8 +80,11 @@ def ler_data(campo: ft.TextField) -> str | None:
 
 def segmentado(opcoes: list[tuple[str, str]], atual: str, on_change=None) -> ft.SegmentedButton:
     return ft.SegmentedButton(
-        segments=[ft.Segment(value=v, label=ft.Text(t)) for v, t in opcoes], selected=[atual],
+        segments=[ft.Segment(value=v, label=ft.Text(t, size=13.5, max_lines=1)) for v, t in opcoes], selected=[atual],
         show_selected_icon=False, on_change=on_change, expand=True,
+        # Pouco espaço interno: "Dinheiro" cabe numa linha mesmo com 4 opções num celular de 360px.
+        style=ft.ButtonStyle(padding=ft.Padding.symmetric(horizontal=2, vertical=10),
+                             shape=ft.RoundedRectangleBorder(radius=10)),
     )
 
 
@@ -359,6 +362,14 @@ class App:
     def largo(self) -> bool:
         return (self.page.width or 0) >= 900
 
+    @property
+    def celular(self) -> bool:
+        return (self.page.width or 1000) < 600
+
+    def largura_janela(self) -> float:
+        """Formulários: 440px no computador, a tela toda (menos margem) no celular."""
+        return max(260, min(440, (self.page.width or 440) - 72))
+
     def render(self) -> None:
         p = self.page
         indice = [t[0] for t in TELAS].index(self.tela)
@@ -368,7 +379,8 @@ class App:
             self.tela = TELAS[int(e.control.selected_index)][0]
             self.render()
 
-        corpo = ft.Container(expand=True, padding=ft.Padding.only(left=18, right=18, top=6, bottom=96),
+        corpo = ft.Container(expand=True, padding=ft.Padding.only(left=16 if self.celular else 24, right=16 if self.celular else 24,
+                                                                  top=6, bottom=96),
                              content=ft.Column(self.tela_atual(), spacing=30, scroll=ft.ScrollMode.AUTO, expand=True,
                                                        horizontal_alignment=ft.CrossAxisAlignment.STRETCH))
         if self.largo:
@@ -415,7 +427,7 @@ class App:
             content=ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
                 ft.Row(spacing=0, controls=[
                     ft.IconButton(ft.Icons.CHEVRON_LEFT_ROUNDED, on_click=mudar_mes(-1), tooltip="Mês anterior"),
-                    ft.Container(ui.titulo(R.nome_mes(self.mes).capitalize(), 21), border_radius=8, ink=True,
+                    ft.Container(ui.titulo(R.nome_mes(self.mes).capitalize(), 18 if self.celular else 21), border_radius=8, ink=True,
                                  padding=ft.Padding.symmetric(horizontal=6, vertical=2), on_click=mudar_mes(0),
                                  tooltip="Voltar para o mês atual"),
                     ft.IconButton(ft.Icons.CHEVRON_RIGHT_ROUNDED, on_click=mudar_mes(1), tooltip="Próximo mês"),
@@ -424,9 +436,16 @@ class App:
                     ft.IconButton(ft.Icons.VISIBILITY_OFF_ROUNDED if self.ocultar else ft.Icons.VISIBILITY_ROUNDED,
                                   tooltip="Mostrar valores" if self.ocultar else "Esconder valores",
                                   on_click=alternar_ocultar),
-                    ft.IconButton(ft.Icons.SETTINGS_OUTLINED, tooltip="Segurança", on_click=lambda _: self.page.run_task(self.dialogo_seguranca)),
-                    ft.IconButton(ft.Icons.LOCK_ROUNDED, tooltip="Travar agora", on_click=travar),
-                    ft.IconButton(ft.Icons.LOGOUT_ROUNDED, tooltip="Sair", on_click=sair),
+                    *([ft.PopupMenuButton(icon=ft.Icons.MORE_VERT_ROUNDED, tooltip="Mais opções", items=[
+                        ft.PopupMenuItem(content="Segurança", icon=ft.Icons.SETTINGS_OUTLINED,
+                                         on_click=lambda _: self.page.run_task(self.dialogo_seguranca)),
+                        ft.PopupMenuItem(content="Travar agora", icon=ft.Icons.LOCK_ROUNDED, on_click=travar),
+                        ft.PopupMenuItem(content="Sair", icon=ft.Icons.LOGOUT_ROUNDED, on_click=sair),
+                    ])] if self.celular else [
+                        ft.IconButton(ft.Icons.SETTINGS_OUTLINED, tooltip="Segurança", on_click=lambda _: self.page.run_task(self.dialogo_seguranca)),
+                        ft.IconButton(ft.Icons.LOCK_ROUNDED, tooltip="Travar agora", on_click=travar),
+                        ft.IconButton(ft.Icons.LOGOUT_ROUNDED, tooltip="Sair", on_click=sair),
+                    ]),
                 ]),
             ]),
         )
@@ -573,17 +592,16 @@ class App:
             f"Fatura {f.cartao['nome']}", f"{R.nome_mes(f.comp, False)}, vence {R.data_curta(f.vencimento)}",
             self.dinheiro(f.a_pagar if f.parcial else f.total), detalhe_valor="falta" if f.parcial else "",
             inicio=ui.bolinha(f.cartao.get("cor", ROXO)), riscado=pago,
-            fim=ft.Row([self.chip_vencimento(f.status, f.vencimento),
-                        ui.check(pago, lambda _, f=f: self.page.run_task(self.alternar_fatura, f.cartao["id"], f.comp),
-                                 tooltip="Desmarcar" if pago else "Marcar como paga")], spacing=8, tight=True))
+            abaixo=self.chip_vencimento(f.status, f.vencimento),
+            fim=ui.check(pago, lambda _, f=f: self.page.run_task(self.alternar_fatura, f.cartao["id"], f.comp),
+                         tooltip="Desmarcar" if pago else "Marcar como paga"))
 
     def linha_conta(self, c: dict) -> ft.Container:
         pago = bool(c["pagamento"])
         return ui.linha(c["conta"]["descricao"], f"dia {R.data_curta(c['vencimento'])}", self.dinheiro(c["conta"]["valor"]),
                         inicio=ui.bolinha(ROXO), riscado=pago,
-                        fim=ft.Row([self.chip_vencimento(c["status"], c["vencimento"]),
-                                    ui.check(pago, lambda _, c=c: self.page.run_task(self.alternar_conta, c["conta"], c["comp"]))],
-                                   spacing=8, tight=True))
+                        abaixo=self.chip_vencimento(c["status"], c["vencimento"]),
+                        fim=ui.check(pago, lambda _, c=c: self.page.run_task(self.alternar_conta, c["conta"], c["comp"])))
 
     # ======================================================================
     # Lançamentos
@@ -627,7 +645,7 @@ class App:
         filtros = [("todos", "Tudo"), *[(f["id"], f["nome"]) for f in R.FORMAS], ("receitas", "Entradas")]
         lista_ctrl = ft.Column([self.lista_lancamentos(r)])
         return [ui.cartao(ft.Column(spacing=12, controls=[
-            ui.titulo(f"Lançamentos de {R.nome_mes(self.mes, False)}"),
+            ui.titulo(f"Extrato de {R.nome_mes(self.mes, False)}"),
             ft.Row(wrap=True, spacing=8, run_spacing=8, controls=[
                 ft.Chip(label=ft.Text(n), selected=self.filtro == f, on_select=filtrar(f), selected_color=ft.Colors.with_opacity(0.25, ROXO))
                 for f, n in filtros]),
@@ -715,9 +733,9 @@ class App:
                 rot = "Desfazer pagamento" if f.status == "paga" else (
                     f"Pagar o restante ({self.dinheiro(f.a_pagar)})" if f.parcial else "Marcar como paga")
                 cls = ft.OutlinedButton if f.status == "paga" else ft.FilledButton
-                botoes.append(cls(rot, on_click=lambda _, c=c: self.page.run_task(self.alternar_fatura, c["id"], self.mes)))
+                botoes.append(cls(rot, height=44, on_click=lambda _, c=c: self.page.run_task(self.alternar_fatura, c["id"], self.mes)))
             if f.a_pagar > 0:
-                botoes.append(ft.OutlinedButton("Pagar um valor", on_click=lambda _, c=c: self.form_pagar_valor(c, self.mes)))
+                botoes.append(ft.OutlinedButton("Pagar um valor", height=44, on_click=lambda _, c=c: self.form_pagar_valor(c, self.mes)))
             compras = []
             for i in f.itens:
                 quitada = R.parcela_quitada(d, i)
@@ -754,8 +772,8 @@ class App:
                 ]))
             status_tipo = {"paga": "ok", "vencida": "perigo", "fechada": "aviso"}.get(f.status, "")
             corpo = ft.Container(padding=16, content=ft.Column(spacing=12, controls=[
-                ft.Row([ui.chip(NOME_STATUS[f.status], status_tipo), ft.Row(botoes, wrap=True, spacing=8)],
-                       alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
+                ft.Row([ui.chip(NOME_STATUS[f.status], status_tipo)]),
+                *([ft.ResponsiveRow([ft.Container(b, col={"xs": 12, "sm": 6}) for b in botoes], spacing=8, run_spacing=8)] if botoes else []),
                 *([ui.lista(avulsos)] if avulsos else []),
                 ft.Container(bgcolor=ft.Colors.with_opacity(0.08, ROXO), border_radius=14, padding=12, content=ft.ResponsiveRow([
                     ft.Column([ui.sutil("Limite", 11.5), ui.texto(self.dinheiro(limite), 14.5, ft.FontWeight.W_700)], spacing=0, col=4),
@@ -798,7 +816,7 @@ class App:
         valor = campo_dinheiro("Valor", R.ler_valor(s["valor"]) if s["valor"] else None, on_change=campo("valor"))
         controles: list[ft.Control] = [
             ui.sutil("Veja como ficariam seu limite e seus meses antes de comprar ou pagar. Nada aqui é salvo.", 13.5),
-            segmentado([("credito", "Crédito"), ("avista", "Pix/débito"), ("pagamento", "Pagar fatura")], s["tipo"], campo("tipo", True)),
+            segmentado([("credito", "Crédito"), ("avista", "Pix/débito"), ("pagamento", "Fatura")], s["tipo"], campo("tipo", True)),
             valor,
         ]
         if s["tipo"] != "pagamento":
@@ -1121,8 +1139,10 @@ class App:
 
         botao.on_click = ao_salvar
         janela = ft.AlertDialog(
-            title=ft.Text(titulo_, size=19, weight=ft.FontWeight.W_800), scrollable=True,
-            content=ft.Container(ft.Column(campos, spacing=14, tight=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH), width=440),
+            title=ft.Text(titulo_, size=19, weight=ft.FontWeight.W_700, font_family=ui.FONTE_TITULO), scrollable=True,
+            inset_padding=ft.Padding.symmetric(horizontal=16, vertical=24),
+            content=ft.Container(ft.Column(campos, spacing=14, tight=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH),
+                                 width=self.largura_janela()),
             actions=[*([ft.TextButton("Excluir", style=ft.ButtonStyle(color=VERMELHO), on_click=ao_excluir)] if excluir else []),
                      ft.TextButton("Cancelar", on_click=lambda _: fechar()), botao],
             actions_alignment=ft.MainAxisAlignment.END)
@@ -1382,7 +1402,7 @@ class App:
 
         self.page.show_dialog(ft.AlertDialog(
             title=ft.Text("Segurança", size=19, weight=ft.FontWeight.W_800),
-            content=ft.Container(width=440, content=ft.Column(tight=True, spacing=14, controls=[
+            content=ft.Container(width=self.largura_janela(), content=ft.Column(tight=True, spacing=14, controls=[
                 ft.Switch(label="Pedir biometria ao abrir o app", value=bool(self.prefs.get("trava", True)), on_change=alternar,
                           active_color=ROXO),
                 ui.alerta(f"{sit.nome}: disponível neste aparelho." if sit.disponivel else

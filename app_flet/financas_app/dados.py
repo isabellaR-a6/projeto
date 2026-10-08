@@ -89,6 +89,18 @@ class BancoSupabase:
             AsyncClientOptions(storage=SessaoEmArquivo(), persist_session=True, auto_refresh_token=True),
         )
 
+    async def _usar_token_da_sessao(self) -> None:
+        """Garante que o banco receba o token da sessão atual.
+
+        A biblioteca só atualiza o token do banco em alguns eventos. Depois do código das duas
+        etapas (evento MFA_CHALLENGE_VERIFIED) ela troca o token pela chave anônima, e o banco,
+        protegido por RLS, devolve tudo vazio. Aqui o token é conferido antes de cada consulta.
+        """
+        sessao = await self.sb.auth.get_session()
+        token = sessao.access_token if sessao else config.SUPABASE_ANON_KEY
+        if self.sb.options.headers.get("Authorization") != f"Bearer {token}":
+            self.sb._listen_to_auth_events("TOKEN_REFRESHED", sessao)
+
     async def email(self) -> str | None:
         sessao = await self.sb.auth.get_session()
         return sessao.user.email if sessao and sessao.user else None
@@ -136,6 +148,8 @@ class BancoSupabase:
         await self.sb.auth.sign_out({"scope": "local"})
 
     async def carregar_tudo(self) -> dict:
+        await self._usar_token_da_sessao()
+
         async def uma(t: str) -> list:
             try:
                 return (await self.sb.table(t).select("*").execute()).data
@@ -148,18 +162,21 @@ class BancoSupabase:
         return dict(zip(TABELAS, listas))
 
     async def inserir(self, tabela: str, obj: dict) -> dict:
+        await self._usar_token_da_sessao()
         try:
             return (await self.sb.table(tabela).insert(obj).execute()).data[0]
         except Exception as e:  # noqa: BLE001
             raise _traduzir(e) from e
 
     async def atualizar(self, tabela: str, id_: str, obj: dict) -> None:
+        await self._usar_token_da_sessao()
         try:
             await self.sb.table(tabela).update(obj).eq("id", id_).execute()
         except Exception as e:  # noqa: BLE001
             raise _traduzir(e) from e
 
     async def remover(self, tabela: str, id_: str) -> None:
+        await self._usar_token_da_sessao()
         try:
             await self.sb.table(tabela).delete().eq("id", id_).execute()
         except Exception as e:  # noqa: BLE001
