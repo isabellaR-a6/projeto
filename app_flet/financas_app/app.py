@@ -115,8 +115,14 @@ class App:
     async def iniciar(self) -> None:
         p = self.page
         p.title = "Minhas Finanças"
+        p.fonts = ui.FONTES
         p.theme = ui.tema(False)
         p.dark_theme = ui.tema(True)
+        # Botões com cantos de 10px (em vez da pílula padrão do Material)
+        for t in (p.theme, p.dark_theme):
+            t.filled_button_theme = ft.FilledButtonTheme(style=ui.estilo_botao())
+            t.outlined_button_theme = ft.OutlinedButtonTheme(style=ui.estilo_botao())
+            t.text_button_theme = ft.TextButtonTheme(style=ui.estilo_botao())
         p.theme_mode = ft.ThemeMode.SYSTEM
         p.padding = 0
         p.window.width, p.window.height = 1180, 820
@@ -159,12 +165,8 @@ class App:
         p.controls.clear()
         p.add(ft.Container(
             expand=True, alignment=ft.Alignment.CENTER, padding=20,
-            gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT,
-                                       colors=[ft.Colors.with_opacity(0.25, LILAS), ft.Colors.with_opacity(0.0, LILAS),
-                                               ft.Colors.with_opacity(0.18, "#c026d3")]),
-            content=ft.Container(width=400, padding=28, border_radius=28, bgcolor=ft.Colors.SURFACE_CONTAINER_LOWEST,
-                                 shadow=ft.BoxShadow(blur_radius=40, spread_radius=-10, offset=ft.Offset(0, 16),
-                                                     color=ft.Colors.with_opacity(0.3, ROXO_ESCURO)),
+            content=ft.Container(width=400, padding=28, border_radius=20, bgcolor=ft.Colors.SURFACE_CONTAINER_LOWEST,
+                                 border=ft.Border.all(1, ui.BORDA),
                                  content=ft.Column(list(controles), tight=True, spacing=14,
                                                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH)),
         ))
@@ -202,11 +204,11 @@ class App:
         botao.on_click = entrar
         senha.on_submit = entrar
         self.tela_cheia(
-            ft.Row([ft.Container(ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_ROUNDED, color=ft.Colors.WHITE, size=30),
+            ft.Row([ft.Container(ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_ROUNDED, color=ft.Colors.ON_PRIMARY, size=30),
                                  width=60, height=60, border_radius=18, alignment=ft.Alignment.CENTER,
-                                 gradient=ft.LinearGradient(colors=[ROXO_ESCURO, "#a855f7"]))],
+                                 bgcolor=ROXO)],
                    alignment=ft.MainAxisAlignment.CENTER),
-            ui.texto("Minhas Finanças", 24, ft.FontWeight.W_800),
+            ui.titulo("Minhas Finanças", 28),
             ui.sutil("Área particular. Entre com seu e-mail e senha.", 14),
             email, senha, msg, botao,
             ft.TextButton("Ver demonstração com dados de exemplo", icon=ft.Icons.SCIENCE_OUTLINED, on_click=demonstracao),
@@ -274,9 +276,9 @@ class App:
         explicacao = (f"Use o {sit.nome} para abrir. O app não vê nem guarda seu rosto ou digital: "
                       "quem confere é o próprio aparelho.") if sit.disponivel else sit.motivo
         self.tela_cheia(
-            ft.Row([ft.Container(ft.Icon(ft.Icons.FINGERPRINT, size=44, color=ft.Colors.WHITE), width=84, height=84,
+            ft.Row([ft.Container(ft.Icon(ft.Icons.FINGERPRINT, size=44, color=ft.Colors.ON_PRIMARY), width=84, height=84,
                                  border_radius=84, alignment=ft.Alignment.CENTER,
-                                 gradient=ft.LinearGradient(colors=[ROXO_ESCURO, "#a855f7"]),
+                                 bgcolor=ROXO,
                                  on_click=com_biometria if sit.disponivel else None, ink=True)],
                    alignment=ft.MainAxisAlignment.CENTER),
             ui.texto("Minhas Finanças está travado", 20, ft.FontWeight.W_800, align=ft.TextAlign.CENTER),
@@ -366,15 +368,15 @@ class App:
             self.tela = TELAS[int(e.control.selected_index)][0]
             self.render()
 
-        corpo = ft.Container(expand=True, padding=ft.Padding.only(left=16, right=16, top=4, bottom=96),
-                             content=ft.Column(self.tela_atual(), spacing=14, scroll=ft.ScrollMode.AUTO, expand=True,
+        corpo = ft.Container(expand=True, padding=ft.Padding.only(left=18, right=18, top=6, bottom=96),
+                             content=ft.Column(self.tela_atual(), spacing=30, scroll=ft.ScrollMode.AUTO, expand=True,
                                                        horizontal_alignment=ft.CrossAxisAlignment.STRETCH))
         if self.largo:
             p.navigation_bar = None
             menu = ft.NavigationRail(
                 selected_index=indice, on_change=trocar, label_type=ft.NavigationRailLabelType.ALL, min_width=96,
-                leading=ft.Container(ui.texto("Minhas\nFinanças", 15, ft.FontWeight.W_800, ROXO,
-                                              align=ft.TextAlign.CENTER), padding=ft.Padding.symmetric(vertical=16)),
+                leading=ft.Container(ft.Text("Minhas\nFinanças", size=16, weight=ft.FontWeight.W_700, font_family=ui.FONTE_TITULO,
+                                              text_align=ft.TextAlign.CENTER), padding=ft.Padding.symmetric(vertical=16)),
                 destinations=[ft.NavigationRailDestination(icon=i, selected_icon=s, label=n) for _, n, i, s in TELAS])
             area = ft.Row([menu, ft.VerticalDivider(width=1), ft.Column([self.cabecalho(), corpo], expand=True, spacing=0)],
                           expand=True, spacing=0)
@@ -383,7 +385,8 @@ class App:
                                                 label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW)
             area = ft.Column([self.cabecalho(), corpo], expand=True, spacing=0)
         p.floating_action_button = None if self.tela == "simular" else ft.FloatingActionButton(
-            icon=ft.Icons.ADD_ROUNDED, bgcolor=ROXO, foreground_color=ft.Colors.WHITE, tooltip="Novo lançamento",
+            icon=ft.Icons.ADD_ROUNDED, bgcolor=ROXO, foreground_color=ft.Colors.ON_PRIMARY, tooltip="Novo lançamento",
+            shape=ft.RoundedRectangleBorder(radius=16),
             on_click=lambda _: self.form_lancamento())
         p.controls.clear()
         p.add(ft.SafeArea(area, expand=True))
@@ -412,9 +415,8 @@ class App:
             content=ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[
                 ft.Row(spacing=0, controls=[
                     ft.IconButton(ft.Icons.CHEVRON_LEFT_ROUNDED, on_click=mudar_mes(-1), tooltip="Mês anterior"),
-                    ft.Container(ui.texto(R.nome_mes(self.mes).capitalize(), 15, ft.FontWeight.W_700, ROXO),
-                                 bgcolor=ft.Colors.with_opacity(0.12, ROXO), border_radius=99, ink=True,
-                                 padding=ft.Padding.symmetric(horizontal=14, vertical=7), on_click=mudar_mes(0),
+                    ft.Container(ui.titulo(R.nome_mes(self.mes).capitalize(), 21), border_radius=8, ink=True,
+                                 padding=ft.Padding.symmetric(horizontal=6, vertical=2), on_click=mudar_mes(0),
                                  tooltip="Voltar para o mês atual"),
                     ft.IconButton(ft.Icons.CHEVRON_RIGHT_ROUNDED, on_click=mudar_mes(1), tooltip="Próximo mês"),
                 ]),
@@ -484,24 +486,21 @@ class App:
                 ft.OutlinedButton("Criar uma meta", icon=ft.Icons.SAVINGS_OUTLINED, on_click=lambda _: self.form_meta()),
             ], spacing=12))]
 
-        partes = [f"{self.dinheiro(r.total_receitas)} de entradas", f"− {self.dinheiro(r.gastos)} de gastos e faturas"]
-        if r.total_contas_pendentes:
-            partes.append(f"− {self.dinheiro(r.total_contas_pendentes)} de contas a pagar")
-        if r.guardado:
-            partes.append(f"− {self.dinheiro(r.guardado)} guardados nas metas")
-        controles: list[ft.Control] = [
-            ui.destaque(f"Sobra prevista em {R.nome_mes(self.mes, False)}", self.dinheiro(r.saldo), " ".join(partes),
-                        cores=["#4c1d95", "#9d174d"] if r.saldo < 0 else None),
-            ft.ResponsiveRow(spacing=10, run_spacing=10, controls=[
-                ui.numero("Entradas", self.dinheiro(r.total_receitas), VERDE, col={"xs": 6, "md": 3}),
-                ui.numero("Gastos do mês", self.dinheiro(r.gastos), col={"xs": 6, "md": 3}),
-                ui.numero("Falta pagar", self.dinheiro(r.a_pagar), AMBAR if r.a_pagar else None, col={"xs": 6, "md": 3}),
-                ui.numero("Guardado no mês", self.dinheiro(r.guardado), ROXO, col={"xs": 6, "md": 3}),
-            ]),
-        ]
+        negativo = r.saldo < 0
+        partes = [("Gastos e faturas", r.gastos, ROXO), ("Contas a pagar", r.total_contas_pendentes, AMBAR),
+                  ("Guardado nas metas", max(0, r.guardado), LILAS),
+                  ("Falta para fechar o mês" if negativo else "Sobra", abs(r.saldo), VERMELHO if negativo else VERDE)]
+        controles: list[ft.Control] = [ft.Column(spacing=6, controls=[
+            ui.sutil(f"{'Pelo previsto, faltam' if negativo else 'Sobra prevista'} em {R.nome_mes(self.mes, False)}", 14.5),
+            ui.numero_texto(self.dinheiro(abs(r.saldo)), 52, ft.FontWeight.W_600, VERMELHO if negativo else None),
+            ft.Container(height=6),
+            ui.regua(r.total_receitas, partes, self.dinheiro),
+            *([ui.sutil(f"Ainda falta pagar {self.dinheiro(r.a_pagar)} este mês, entre faturas e contas.", 13.5)] if r.a_pagar else []),
+        ])]
         alertas = self.alertas(r)
         if alertas:
-            controles.append(ui.secao("Atenção", [ft.Column([ui.alerta(m, n) for n, m in alertas], spacing=8)]))
+            controles.append(ui.secao("Atenção", [ft.Column([ui.alerta(m, n) for n, m in alertas], spacing=8,
+                                                              horizontal_alignment=ft.CrossAxisAlignment.STRETCH)]))
 
         # Vencimentos do mês (faturas com valor)
         atrasadas = R.faturas_atrasadas(d, r.parcelas) if self.mes == R.comp_atual() else []
@@ -571,7 +570,7 @@ class App:
     def linha_fatura(self, f: R.Fatura) -> ft.Container:
         pago = f.status == "paga"
         return ui.linha(
-            f"Fatura {f.cartao['nome']}", f"{R.nome_mes(f.comp, False)} · vence {R.data_curta(f.vencimento)}",
+            f"Fatura {f.cartao['nome']}", f"{R.nome_mes(f.comp, False)}, vence {R.data_curta(f.vencimento)}",
             self.dinheiro(f.a_pagar if f.parcial else f.total), detalhe_valor="falta" if f.parcial else "",
             inicio=ui.bolinha(f.cartao.get("cor", ROXO)), riscado=pago,
             fim=ft.Row([self.chip_vencimento(f.status, f.vencimento),
@@ -644,38 +643,55 @@ class App:
 
     def lista_lancamentos(self, r: R.Resumo) -> ft.Control:
         itens = self.itens_filtrados(r)
-        linhas = []
+        grupos: dict[str, list[dict]] = {}
         for l in itens:
-            c = self.cartao_de(l.get("cartao_id"))
-            detalhe = f"{R.data_curta(l['data'])} · {R.categoria(l['categoria'])['nome']}"
-            if l["tipo"] == "despesa" and c:
-                ps = R.parcelas_de(l, c)
-                detalhe = f"{R.data_curta(l['data'])} · {c['nome']} · " + (
-                    f"{len(ps)}x de {self.dinheiro(ps[-1].valor)} · faturas de {R.mes_curto(ps[0].competencia)} a {R.mes_curto(ps[-1].competencia)}"
-                    if len(ps) > 1 else f"fatura de {R.mes_curto(ps[0].competencia)}")
-            elif l["tipo"] == "despesa":
-                detalhe += f" · {R.nome_forma(R.forma_de(l))}"
-            receita = l["tipo"] == "receita"
-            pago = not receita and self.lancamento_pago(l)
-            linhas.append(ui.linha(
-                l["descricao"], detalhe, f"{'+' if receita else '−'} {self.dinheiro(l['valor'])}",
-                cor_valor=VERDE if receita else None, riscado=pago,
-                inicio=ui.bolinha(VERDE) if receita else ui.check(
-                    pago, lambda _, l=l: self.page.run_task(self.alternar_pago, l), cor=self.cor_lancamento(l),
-                    tooltip="Desmarcar como pago" if pago else "Marcar como pago"),
-                on_click=lambda _, l=l: self.form_lancamento(l)))
+            grupos.setdefault(l["data"], []).append(l)
+        linhas = [ui.grupo_dia(self.nome_dia(dia), self.dinheiro(abs(R.soma((1 if l["tipo"] == "receita" else -1) * float(l["valor"]) for l in doDia))),
+                               [self.linha_lancamento(l) for l in doDia])
+                  for dia, doDia in grupos.items()]
         if not linhas:
-            return ui.vazio("Nenhum lançamento por aqui.")
+            return ui.vazio(f"Nada lançado em {R.nome_mes(self.mes, False)}" + (" com esse filtro." if self.filtro != "todos" or self.busca.strip() else "."))
         antigas = [p for p in r.parcelas_mes if p.lanc["data"][:7] != self.mes]
         extra = []
         if antigas and self.filtro in ("todos", "credito") and not self.busca.strip():
             extra.append(ft.ExpansionTile(
                 title=ui.texto(f"Parcelas de compras de outros meses que vencem em {R.nome_mes(self.mes, False)} "
                                f"({self.dinheiro(R.soma(p.valor for p in antigas))})", 13.5, ft.FontWeight.W_600, ROXO),
-                controls=[ui.linha(p.lanc["descricao"], f"{p.cartao['nome']} · parcela {p.numero}/{p.total}",
+                controls=[ui.linha(p.lanc["descricao"], f"{p.cartao['nome']}, parcela {p.numero} de {p.total}",
                                    f"− {self.dinheiro(p.valor)}", inicio=ui.bolinha(p.cartao.get("cor", ROXO)),
                                    on_click=lambda _, l=p.lanc: self.form_lancamento(l)) for p in antigas]))
-        return ft.Column([ui.lista(linhas), *extra], spacing=6)
+        return ft.Column([*linhas, *extra], spacing=22)
+
+    DIAS_SEMANA = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
+
+    def nome_dia(self, iso: str) -> str:
+        d = date.fromisoformat(iso)
+        extenso = f"{d.day} de {R.MESES[d.month - 1]}"
+        dias = R.dias_ate(iso)
+        if dias == 0:
+            return f"Hoje, {extenso}"
+        if dias == -1:
+            return f"Ontem, {extenso}"
+        return f"{self.DIAS_SEMANA[d.weekday()].capitalize()}, {extenso}"
+
+    def linha_lancamento(self, l: dict) -> ft.Container:
+        c = self.cartao_de(l.get("cartao_id"))
+        detalhe = R.categoria(l["categoria"])["nome"]
+        if l["tipo"] == "despesa" and c:
+            ps = R.parcelas_de(l, c)
+            detalhe = (f"{c['nome']}, {len(ps)}x de {self.dinheiro(ps[-1].valor)} ({R.mes_curto(ps[0].competencia)} a {R.mes_curto(ps[-1].competencia)})"
+                       if len(ps) > 1 else f"{c['nome']}, fatura de {R.mes_curto(ps[0].competencia)}")
+        elif l["tipo"] == "despesa":
+            detalhe += f", {R.nome_forma(R.forma_de(l)).lower()}"
+        receita = l["tipo"] == "receita"
+        pago = not receita and self.lancamento_pago(l)
+        return ui.linha(
+            l["descricao"], detalhe, f"{'+' if receita else '−'} {self.dinheiro(l['valor'])}",
+            cor_valor=VERDE if receita else None, riscado=pago,
+            inicio=ui.bolinha(VERDE) if receita else ui.check(
+                pago, lambda _, l=l: self.page.run_task(self.alternar_pago, l), cor=self.cor_lancamento(l),
+                tooltip="Desmarcar como pago" if pago else "Marcar como pago"),
+            on_click=lambda _, l=l: self.form_lancamento(l))
 
     # ======================================================================
     # Cartões
@@ -707,12 +723,12 @@ class App:
                 quitada = R.parcela_quitada(d, i)
                 travada = bool(f.pagamento) or i.pre_paga
                 compras.append(ui.linha(
-                    i.lanc["descricao"], R.data_curta(i.lanc["data"]) + (f" · parcela {i.numero}/{i.total}" if i.total > 1 else " · à vista"),
+                    i.lanc["descricao"], R.data_curta(i.lanc["data"]) + (f", parcela {i.numero} de {i.total}" if i.total > 1 else ", à vista"),
                     self.dinheiro(i.valor), riscado=quitada, on_click=lambda _, l=i.lanc: self.form_lancamento(l),
                     fim=ui.check(quitada, lambda _, i=i: self.page.run_task(self.alternar_item, i.lanc["id"], i.competencia),
                                  cor=cor, desativado=travada, tooltip="Já está paga" if travada else "Marcar esta compra")))
             parcel = [ui.linha(x["lanc"]["descricao"],
-                               f"{x['total']}x de {self.dinheiro(x['valor_parcela'])} · {x['pagas']} de {x['total']} pagas · termina em {R.mes_curto(x['ultima'])}",
+                               f"{x['total']}x de {self.dinheiro(x['valor_parcela'])}, {x['pagas']} de {x['total']} pagas, termina em {R.mes_curto(x['ultima'])}",
                                self.dinheiro(x["restante"]), detalhe_valor="falta",
                                on_click=lambda _, l=x["lanc"]: self.form_lancamento(l))
                       for x in ativos if x["cartao"]["id"] == c["id"]]
@@ -721,20 +737,19 @@ class App:
                                                                    on_click=lambda _, x=x: self.page.run_task(self.apagar_avulso, x)))
                        for x in f.avulsos]
             plastico = ft.Container(
-                gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT, colors=[cor, "#1e1b4b"]),
-                border_radius=ft.BorderRadius.only(top_left=20, top_right=20), padding=18,
+                bgcolor=cor, margin=8, border_radius=14, padding=18,
                 content=ft.Column(spacing=2, controls=[
                     ft.Row([ui.texto(c["nome"], 16, ft.FontWeight.W_700, ft.Colors.WHITE),
                             ft.IconButton(ft.Icons.EDIT_ROUNDED, icon_color=ft.Colors.WHITE, tooltip="Editar cartão",
                                           on_click=lambda _, c=c: self.form_cartao(c))],
                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     ui.texto(f"Fatura de {R.nome_mes(self.mes, False)}", 12.5, color=ft.Colors.with_opacity(0.85, ft.Colors.WHITE)),
-                    ui.texto(self.dinheiro(f.total), 30, ft.FontWeight.W_800, ft.Colors.WHITE),
-                    *([ft.Container(ui.texto(f"pago {self.dinheiro(f.pago)} · falta {self.dinheiro(f.a_pagar)}", 12.5,
+                    ui.numero_texto(self.dinheiro(f.total), 32, ft.FontWeight.W_600, ft.Colors.WHITE),
+                    *([ft.Container(ui.texto(f"Já pago {self.dinheiro(f.pago)}, falta {self.dinheiro(f.a_pagar)}", 12.5,
                                              ft.FontWeight.W_600, ft.Colors.WHITE),
                                     bgcolor=ft.Colors.with_opacity(0.18, ft.Colors.WHITE), border_radius=99,
                                     padding=ft.Padding.symmetric(horizontal=10, vertical=3))] if f.parcial else []),
-                    ui.texto(f"fecha {R.data_curta(f.fechamento)} · vence {R.data_curta(f.vencimento)}", 12.5,
+                    ui.texto(f"Fecha {R.data_curta(f.fechamento)}, vence {R.data_curta(f.vencimento)}", 12.5,
                              color=ft.Colors.with_opacity(0.9, ft.Colors.WHITE)),
                 ]))
             status_tipo = {"paga": "ok", "vencida": "perigo", "fechada": "aviso"}.get(f.status, "")
@@ -755,7 +770,7 @@ class App:
                                     subtitle=ui.sutil("Toque na bolinha de uma compra para marcar só ela como paga."),
                                     expanded=len(compras) <= 6 or f.parcial, controls=[ui.lista(compras)])] if compras else []),
             ]))
-            blocos.append(ft.Container(col={"xs": 12, "md": 6}, border_radius=20, bgcolor=ft.Colors.SURFACE_CONTAINER_LOWEST,
+            blocos.append(ft.Container(col={"xs": 12, "md": 6}, border_radius=18, bgcolor=ft.Colors.SURFACE_CONTAINER_LOWEST,
                                        border=ft.Border.all(1, ui.BORDA), clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
                                        content=ft.Column([plastico, corpo], spacing=0)))
         return [topo, ft.ResponsiveRow(blocos, spacing=14, run_spacing=14)]
@@ -805,7 +820,7 @@ class App:
             abertas = self.faturas_em_aberto(c)
             if abertas and s["fatura"] not in [f.comp for f in abertas]:
                 s["fatura"] = abertas[0].comp
-            controles.append(seletor("Qual fatura", [(f.comp, f"{R.nome_mes(f.comp)} · falta {R.brl(f.a_pagar)}") for f in abertas],
+            controles.append(seletor("Qual fatura", [(f.comp, f"{R.nome_mes(f.comp)} (falta {R.brl(f.a_pagar)})") for f in abertas],
                                      s["fatura"], campo("fatura")) if abertas else ui.alerta("Este cartão não tem fatura a pagar.", "info"))
         resultado.controls = self.resultado_simulacao()
         return [ui.titulo("Simular"), ft.ResponsiveRow(spacing=14, run_spacing=14, controls=[
@@ -912,13 +927,12 @@ class App:
             ft.Row([ui.titulo(f"Entradas de {R.nome_mes(self.mes, False)}"),
                     ft.FilledButton("Nova entrada", icon=ft.Icons.ADD_ROUNDED, on_click=lambda _: self.form_lancamento(None, "receita"))],
                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN, wrap=True),
-            ui.destaque(f"Total que entrou em {R.nome_mes(self.mes, False)}", self.dinheiro(r.total_receitas), comparacao,
-                        cores=["#3b0764", "#6d28d9", "#059669"]),
+            ui.destaque(f"Total que entrou em {R.nome_mes(self.mes, False)}", self.dinheiro(r.total_receitas), comparacao),
             ft.ResponsiveRow(spacing=10, run_spacing=10, controls=[
                 ui.numero("Já saiu do que entrou", self.dinheiro(r.total_receitas - r.saldo), col=6),
                 ui.numero("Sobra prevista", self.dinheiro(r.saldo), VERMELHO if r.saldo < 0 else VERDE, col=6)]),
             ft.ResponsiveRow(spacing=14, run_spacing=14, controls=[
-                ui.secao("Lista", [ui.lista([ui.linha(l["descricao"], f"{R.data_curta(l['data'])} · {R.categoria(l['categoria'])['nome']}",
+                ui.secao("Lista", [ui.lista([ui.linha(l["descricao"], f"{R.categoria(l['categoria'])['nome']}, dia {R.data_curta(l['data'])}",
                                                       f"+ {self.dinheiro(l['valor'])}", cor_valor=VERDE, inicio=ui.bolinha(VERDE),
                                                       on_click=lambda _, l=l: self.form_lancamento(l)) for l in lista])
                                    if lista else ui.vazio("Nenhuma entrada neste mês.")], col={"xs": 12, "md": 6}),
@@ -955,10 +969,10 @@ class App:
                          else f"O prazo ({R.mes_curto(m['prazo'])}) já passou. Faltam {self.dinheiro(falta)}.")
             movs = sorted((x for x in d["metas_movimentos"] if x["meta_id"] == m["id"]), key=lambda x: x["data"], reverse=True)
             cards.append(ui.cartao(ft.Column(spacing=10, controls=[
-                ft.Row([ft.Column([ui.texto(m["nome"], 17, ft.FontWeight.W_700),
+                ft.Row([ft.Column([ui.titulo(m["nome"], 18),
                                    ui.sutil(f"até {R.mes_curto(m['prazo'])}" if m.get("prazo") else "sem prazo")], spacing=0, expand=True),
                         ft.IconButton(ft.Icons.EDIT_ROUNDED, tooltip="Editar", on_click=lambda _, m=m: self.form_meta(m))]),
-                ft.Row([ui.texto(self.dinheiro(g), 26, ft.FontWeight.W_800), ui.sutil(f"de {self.dinheiro(alvo)}", 13)],
+                ft.Row([ui.numero_texto(self.dinheiro(g), 30), ui.sutil(f"de {self.dinheiro(alvo)}", 13)],
                        vertical_alignment=ft.CrossAxisAlignment.END),
                 ui.barra(g / alvo if alvo else 0, cor),
                 ft.Row([ui.sutil(f"{round(g / alvo * 100) if alvo else 0}%"), ui.sutil(f"faltam {self.dinheiro(falta)}" if falta else "completa")],
