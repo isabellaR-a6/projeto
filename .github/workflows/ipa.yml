@@ -39,30 +39,42 @@ jobs:
       - name: Instalar o Flet
         run: pip install "flet==1.0.3" "flet-cli==1.0.3"
 
-      - name: Gerar o app (sem assinatura)
+      # O Flet monta o projeto inteiro (Python, bibliotecas, ícone). No fim ele tenta "arquivar" no Xcode,
+      # que exige uma equipe de desenvolvedor Apple; esse passo final pode falhar e tudo bem.
+      - name: Preparar o projeto (Flet)
         env:
           PYTHONUTF8: "1"
         run: |
+          flet build ipa --yes --no-rich-output --project minhas-financas --product "Minhas Finanças" --org br.com.minhasfinancas --build-number ${{ github.run_number }} --verbose > build.log 2>&1 || true
+          tail -n 25 build.log
+          test -f build/flutter/pubspec.yaml || { echo "O Flet não criou o projeto"; exit 1; }
+
+      # Compila o app sem assinatura (o SideStore assina na instalação).
+      - name: Compilar sem assinatura
+        run: |
           set -o pipefail
-          flet build ipa --yes --no-rich-output --project minhas-financas --product "Minhas Finanças" --org br.com.minhasfinancas --build-number ${{ github.run_number }} --verbose 2>&1 | tee build.log
+          FLUTTER=$(ls -d "$HOME"/flutter/*/bin/flutter | head -1)
+          VERSAO_APP=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          cd build/flutter
+          "$FLUTTER" build ios --release --no-codesign --build-number ${{ github.run_number }} --build-name "$VERSAO_APP" 2>&1 | tee ../../flutter.log
 
       # Se der erro, publica as últimas linhas como "anotação" (visível sem login no repositório público),
       # para dar para ver o motivo sem baixar o registro completo.
       - name: Mostrar o erro
         if: failure()
         run: |
-          grep -iE "error|exception|failed|not found|could not|no matching|traceback" build.log | tail -n 40 > erros.txt || true
-          tail -n 40 build.log > final.txt
+          cat build.log flutter.log 2>/dev/null > tudo.log || true
+          grep -iE "error|exception|failed|not found|could not|no matching|traceback" tudo.log | tail -n 40 > erros.txt || true
+          tail -n 40 tudo.log > final.txt
           for arq in erros.txt final.txt; do
             msg=$(tr -d '\015' < "$arq" | sed -e 's/%/%25/g' | cut -c1-300 | awk 'BEGIN{ORS="%0A"} {print}')
             echo "::error title=$arq::$msg"
           done
 
-      - name: Montar o .ipa a partir do arquivo do Xcode
+      - name: Montar o .ipa
         run: |
-          ARQUIVO=$(find build -name "*.xcarchive" -type d | head -1)
-          if [ -z "$ARQUIVO" ]; then echo "Não achei o .xcarchive"; find build -maxdepth 3; exit 1; fi
-          APP=$(ls -d "$ARQUIVO/Products/Applications/"*.app | head -1)
+          APP=$(ls -d build/flutter/build/ios/iphoneos/*.app | head -1)
+          if [ -z "$APP" ]; then echo "Não achei o .app"; find build/flutter/build -maxdepth 3; exit 1; fi
           rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
           zip -qry MinhasFinancas.ipa Payload
           ls -lh MinhasFinancas.ipa
