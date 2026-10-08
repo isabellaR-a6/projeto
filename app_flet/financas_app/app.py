@@ -187,6 +187,9 @@ class App:
             if not email.value.strip() or not senha.value:
                 msg.value = "Preencha e-mail e senha."
                 return msg.update()
+            if not R.email_valido(email.value):
+                msg.value = "Digite um e-mail válido, como nome@exemplo.com."
+                return msg.update()
             botao.disabled, botao.content = True, "Entrando…"
             botao.update()
             try:
@@ -223,8 +226,10 @@ class App:
         msg = ft.Text(erro, color=VERMELHO, size=13)
 
         async def confirmar(_=None):
+            if not R.codigo_valido(codigo.value or ""):
+                return self.tela_codigo("O código tem 6 números. Confira no app autenticador.")
             try:
-                await self.banco.verificar_codigo("".join(c for c in codigo.value if c.isdigit()))
+                await self.banco.verificar_codigo(codigo.value.strip())
                 await self.abrir_app()
             except ErroApp as e:
                 self.tela_codigo(str(e))

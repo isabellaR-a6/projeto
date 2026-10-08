@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import calendar
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
@@ -407,6 +408,22 @@ def resumo_mes(d: dict, comp: str) -> Resumo:
         limite_total=soma(c["limite"] for c in d["cartoes"]),
         limite_usado=soma(limite_usado(d, c, parcelas) for c in d["cartoes"]),
     )
+
+
+# ---------- Validações com expressões regulares (REGEX) ----------
+# E-mail: parte local (letras, números, ponto, sinal de mais, hífen ou sublinhado), um "@",
+# um domínio e pelo menos uma extensão de 2 letras ou mais (ex.: nome@exemplo.com.br).
+REGEX_EMAIL = re.compile(r"^[\w.+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$")
+# Código da verificação em duas etapas: exatamente 6 números.
+REGEX_CODIGO = re.compile(r"^\d{6}$")
+
+
+def email_valido(texto: str) -> bool:
+    return bool(REGEX_EMAIL.fullmatch(texto.strip()))
+
+
+def codigo_valido(texto: str) -> bool:
+    return bool(REGEX_CODIGO.fullmatch(texto.strip()))
 
 
 # ---------- Valores em reais ----------

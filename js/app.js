@@ -141,6 +141,11 @@ function telaLogin(erro = '') {
   $('#form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
+    // Mesma REGEX do app Flet (regras.py): parte local, "@", domínio e extensão de 2+ letras.
+    if (!/^[\w.+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(f.email.value.trim())) {
+      telaLogin('Digite um e-mail válido, como nome@exemplo.com.');
+      return;
+    }
     const botao = f.querySelector('button');
     botao.disabled = true;
     botao.textContent = 'Entrando…';
