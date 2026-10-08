@@ -50,21 +50,28 @@ jobs:
           test -f build/flutter/pubspec.yaml || { echo "O Flet não criou o projeto"; exit 1; }
 
       # Compila o app sem assinatura (o SideStore assina na instalação).
+      # O Flutter só gera a configuração; quem compila é o xcodebuild, com a assinatura desligada
+      # pela linha de comando (assim vale para TODAS as partes do projeto, inclusive pacotes internos).
       - name: Compilar sem assinatura
         run: |
           set -o pipefail
           FLUTTER=$(ls -d "$HOME"/flutter/*/bin/flutter | head -1)
           VERSAO_APP=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
           cd build/flutter
-          "$FLUTTER" build ios --release --no-codesign --build-number ${{ github.run_number }} --build-name "$VERSAO_APP" 2>&1 | tee ../../flutter.log
+          "$FLUTTER" build ios --config-only --release --no-codesign --build-number ${{ github.run_number }} --build-name "$VERSAO_APP" 2>&1 | tee ../../flutter.log
+          cd ios
+          if [ -d Runner.xcworkspace ]; then ALVO="-workspace Runner.xcworkspace"; else ALVO="-project Runner.xcodeproj"; fi
+          xcodebuild $ALVO -scheme Runner -configuration Release             -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath ../build/xcode             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""             CODE_SIGN_ENTITLEMENTS="" DEVELOPMENT_TEAM="" PROVISIONING_PROFILE_SPECIFIER=""             build 2>&1 | tee ../../../xcode.log | grep -E "error:|warning: .*sign|BUILD (SUCCEEDED|FAILED)|\*\* " || true
+          test -d ../build/xcode/Build/Products/Release-iphoneos/Runner.app
 
       # Se der erro, publica as últimas linhas como "anotação" (visível sem login no repositório público),
       # para dar para ver o motivo sem baixar o registro completo.
       - name: Mostrar o erro
         if: failure()
         run: |
-          cat build.log flutter.log 2>/dev/null > tudo.log || true
-          grep -iE "error|exception|failed|not found|could not|no matching|traceback" tudo.log | tail -n 40 > erros.txt || true
+          cat build.log flutter.log xcode.log 2>/dev/null > tudo.log || true
+          grep -E "error:|Signing for|requires a development team|BUILD FAILED" xcode.log 2>/dev/null | sort -u | tail -n 40 > erros.txt || true
+          [ -s erros.txt ] || grep -iE "error|exception|failed|not found|could not|traceback" tudo.log | tail -n 40 > erros.txt || true
           tail -n 40 tudo.log > final.txt
           for arq in erros.txt final.txt; do
             msg=$(tr -d '\015' < "$arq" | sed -e 's/%/%25/g' | cut -c1-300 | awk 'BEGIN{ORS="%0A"} {print}')
@@ -73,7 +80,7 @@ jobs:
 
       - name: Montar o .ipa
         run: |
-          APP=$(ls -d build/flutter/build/ios/iphoneos/*.app | head -1)
+          APP=$(ls -d build/flutter/build/xcode/Build/Products/Release-iphoneos/*.app | head -1)
           if [ -z "$APP" ]; then echo "Não achei o .app"; find build/flutter/build -maxdepth 3; exit 1; fi
           rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
           zip -qry MinhasFinancas.ipa Payload
