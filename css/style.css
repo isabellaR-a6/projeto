@@ -558,3 +558,216 @@ body.salvando { cursor: progress; }
 @media (prefers-color-scheme: dark) { .btn-check.marcado[style*="#"] { color: #fff; } }
 /* Pontinho das entradas ocupa o mesmo espaço da bolinha de pago, para os nomes ficarem alinhados. */
 .lista .linha > .bolinha:first-child { margin: 0 9px; }
+
+/* =====================================================================
+   Identidade v2: minimalista elegante
+   Ameixa e lavanda sobre névoa lilás; títulos e valores em Bricolage Grotesque,
+   texto em Instrument Sans. Menos caixas: seções soltas, separadas por espaço e
+   linhas finas. Um único elemento marcante: a régua do mês.
+   ===================================================================== */
+:root {
+  --fundo: #f6f4fa;
+  --superficie: #ffffff;
+  --superficie-2: #efebf6;
+  --borda: #e3dcee;
+  --texto: #1f1630;
+  --texto-2: #6e6383;
+  --roxo: #5b2a86;
+  --roxo-forte: #43206a;
+  --roxo-suave: #ece5f7;
+  --roxo-texto: #5b2a86;
+  --lilas: #b9a6e3;
+  --positivo: #2f7d5b;
+  --aviso: #b7791f;
+  --aviso-fundo: #fbf1de;
+  --perigo: #b4234a;
+  --perigo-fundo: #f9e3e9;
+  --ok-fundo: #e1f1e9;
+  --sombra: none;
+  --fonte-titulo: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --fonte-texto: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #141019;
+    --superficie: #1c1624;
+    --superficie-2: #251e30;
+    --borda: #2f2740;
+    --texto: #eee8f7;
+    --texto-2: #a397b8;
+    --roxo: #c3a8f0;
+    --roxo-forte: #dccbf7;
+    --roxo-suave: #2a2139;
+    --roxo-texto: #cdb6f4;
+    --lilas: #6f58a0;
+    --positivo: #6cc59a;
+    --aviso: #e3b25b;
+    --aviso-fundo: #2e2516;
+    --perigo: #f07a96;
+    --perigo-fundo: #33161f;
+    --ok-fundo: #15291f;
+  }
+}
+
+body { font-family: var(--fonte-texto); font-size: 15.5px; letter-spacing: -0.003em; }
+h1, h2, h3, .valor-grande, .mes-saldo, .marca, .mes-atual, .meta-valores strong, .linha-valor, .numero strong {
+  font-family: var(--fonte-titulo);
+}
+h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; }
+.linha-valor, .numero strong, .valor-grande, .mes-saldo { font-variant-numeric: tabular-nums lining-nums; }
+
+/* Seções soltas no fundo, em vez de caixinhas com sombra */
+.bloco, .cartao-base {
+  background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 0;
+}
+.bloco > h2, .bloco-topo { margin-bottom: .6rem; }
+.bloco-topo h2 { margin: 0; }
+.conteudo { gap: 2.2rem; padding-top: .75rem; }
+.grade-2 { gap: 2.2rem; }
+@media (min-width: 900px) { .grade-2 { gap: 3rem; } .conteudo { gap: 2.6rem; } }
+
+/* Topo: o mês é o título da página */
+.topo { background: var(--fundo); border-bottom: 0; }
+.mes-atual {
+  background: none; padding: .2rem .4rem; border-radius: 8px; color: var(--texto);
+  font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; text-transform: none;
+}
+.mes-atual::first-letter { text-transform: uppercase; }
+.mes-atual:hover { background: var(--superficie-2); }
+.btn-icone { border-radius: 10px; }
+@media (max-width: 899px) { .mes-atual { font-size: 1.15rem; } }
+
+/* Navegação */
+.lateral { background: var(--fundo); }
+.marca { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.03em; color: var(--texto); }
+.menu-item { border-radius: 10px; }
+.menu-item.ativo { background: none; color: var(--roxo-texto); }
+.menu-item.ativo span { font-weight: 700; }
+@media (max-width: 899px) {
+  .lateral { border-top: 1px solid var(--borda); }
+  .menu-item.ativo::before { left: 42%; right: 42%; height: 3px; border-radius: 0 0 3px 3px; }
+}
+@media (min-width: 900px) {
+  .lateral { border-right: 1px solid var(--borda); }
+  .menu-item:hover { background: var(--superficie-2); }
+}
+
+/* Botões: cantos de 10px, nada de pílula em tudo */
+.btn { border-radius: 10px; font-weight: 600; }
+.btn.primario { background: var(--roxo); border-color: var(--roxo); }
+.btn.primario:hover { background: var(--roxo-forte); border-color: var(--roxo-forte); }
+.fab {
+  border-radius: 16px; background: var(--roxo); box-shadow: 0 6px 18px color-mix(in srgb, var(--roxo) 35%, transparent);
+}
+@media (prefers-color-scheme: dark) { .fab { background: var(--roxo); color: #1b1030; } }
+.filtro { border-radius: 8px; font-weight: 600; }
+.chip { border-radius: 6px; font-weight: 600; letter-spacing: 0; }
+
+/* A régua do mês */
+.mes-resumo { display: grid; gap: .55rem; }
+.mes-rotulo { margin: 0; color: var(--texto-2); font-size: .95rem; }
+.mes-saldo {
+  margin: 0; font-size: clamp(2.6rem, 9vw, 4rem); font-weight: 600; letter-spacing: -0.045em;
+  line-height: 1; color: var(--texto);
+}
+.mes-saldo.negativo { color: var(--perigo); }
+.regua {
+  display: flex; gap: 3px; height: 14px; margin-top: .6rem; border-radius: 4px; overflow: hidden;
+  background: var(--superficie-2);
+}
+.regua .seg { min-width: 4px; }
+.seg.gastos, .amostra.gastos { background: var(--roxo); }
+.seg.contas, .amostra.contas { background: var(--aviso); }
+.seg.metas, .amostra.metas { background: var(--lilas); }
+.seg.sobra, .amostra.sobra { background: var(--positivo); }
+.seg.falta, .amostra.falta {
+  background: repeating-linear-gradient(135deg, var(--perigo) 0 4px, transparent 4px 7px);
+}
+.regua-legenda {
+  margin: .4rem 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .7rem 1.4rem;
+}
+.regua-legenda div { display: grid; gap: .1rem; }
+.regua-legenda dt { display: flex; align-items: center; gap: .45rem; color: var(--texto-2); font-size: .85rem; }
+.regua-legenda dd { margin: 0; font-family: var(--fonte-titulo); font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.amostra { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+.amostra.entrou { background: none; box-shadow: inset 0 0 0 2px var(--texto-2); }
+.mes-nota { margin: .3rem 0 0; color: var(--texto-2); font-size: .92rem; }
+.mes-nota strong { color: var(--aviso); font-weight: 700; }
+
+/* Destaques que sobraram (Entradas) seguem a régua: tipografia, não degradê */
+.destaque, .destaque.entrada, .destaque.negativo {
+  background: none; color: var(--texto); box-shadow: none; padding: 0; border-radius: 0;
+}
+.destaque::after { display: none; }
+.destaque .rotulo, .destaque .conta-saldo { opacity: 1; color: var(--texto-2); }
+.destaque .valor-grande { font-size: clamp(2.4rem, 8vw, 3.6rem); font-weight: 600; letter-spacing: -0.045em; }
+
+/* Números soltos (Metas, Entradas): sem caixa, só uma linha fina à esquerda */
+.numeros { gap: 1.2rem; }
+.numero {
+  background: none; border: 0; border-left: 2px solid var(--lilas); border-radius: 0; box-shadow: none;
+  padding: .1rem 0 .1rem .8rem;
+}
+
+/* Listas com linhas finas; lançamentos agrupados por dia */
+.lista .linha { border-bottom-color: var(--borda); }
+.linha.clicavel:hover { background: var(--superficie-2); }
+.linha-texto strong { font-weight: 600; }
+.linha-valor { font-weight: 600; font-size: 1rem; }
+.dias { display: grid; gap: 1.4rem; }
+.dia-titulo {
+  display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 .1rem;
+  padding-bottom: .4rem; border-bottom: 1px solid var(--texto); font-size: .98rem; font-weight: 600;
+}
+.dia-total { font-family: var(--fonte-titulo); color: var(--texto-2); font-weight: 500; font-variant-numeric: tabular-nums; }
+.totais { background: none; border-radius: 0; padding: .2rem 0 .6rem; border-bottom: 1px solid var(--borda); }
+.busca { border-radius: 10px; background: var(--superficie); }
+
+/* Cartões de crédito continuam parecendo cartões: são objetos de verdade */
+.cartao-fatura { background: var(--superficie); border: 1px solid var(--borda); border-radius: 18px; box-shadow: none; }
+.plastico {
+  background: var(--cor);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, 0) 45%);
+  border-radius: 16px; margin: 8px 8px 0;
+}
+.plastico::after { display: none; }
+.plastico .valor-grande { font-family: var(--fonte-titulo); letter-spacing: -0.03em; }
+.plastico-pago { border-radius: 6px; }
+.limite-tres { background: none; padding: .2rem 0; border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); border-radius: 0; }
+
+/* Metas */
+.meta-cartao { background: var(--superficie); box-shadow: none; border-radius: 16px; border-top-width: 3px; }
+.meta-valores strong { letter-spacing: -0.03em; }
+.meta-plano { border-radius: 10px; }
+
+/* Avisos: uma linha de cor à esquerda, fundo bem leve */
+.alerta { border-radius: 8px; border-left-width: 3px; }
+
+/* Simular: cabeçalho da tabela em caixa normal */
+.sim-cab { text-transform: none; letter-spacing: 0; font-size: .78rem; }
+.sim-mes, .sim-destaque { box-shadow: none; }
+.sim-destaque { border-radius: 12px; }
+
+/* Janelas */
+dialog { border-radius: 18px; box-shadow: 0 30px 80px rgba(31, 22, 48, .28); }
+.form h2 { font-size: 1.3rem; letter-spacing: -0.02em; }
+.segmentado { border-radius: 12px; }
+.segmentado span { border-radius: 9px; }
+
+/* Login e trava */
+.login { background: var(--fundo); }
+.login-caixa { box-shadow: none; border-radius: 20px; }
+.login-caixa h1 { font-size: 1.8rem; letter-spacing: -0.03em; }
+
+.toast { background: var(--texto); color: var(--fundo); border-radius: 10px; box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* Barras finas e sóbrias: ameixa normal, âmbar e vinho só quando há motivo */
+.barra { height: 6px; background: var(--superficie-2); }
+.barra span { background: var(--roxo); }
+.barra span.neutra { background: var(--lilas); }
+.barra span.verde { background: var(--positivo); }
+.barra.grossa { height: 10px; }

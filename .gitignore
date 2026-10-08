@@ -10,3 +10,9 @@ supabase/functions/avisos/finance.mjs
 .claude/
 .netlify/
 supabase/.temp/
+
+# App Flet: ambiente Python e caches
+app_flet/.venv/
+__pycache__/
+*.pyc
+app_flet/build/

@@ -234,6 +234,31 @@ function renderTela() {
 }
 
 /* ---------- Início ---------- */
+// A régua do mês: tudo o que entrou, dividido em para onde foi (gastos, contas, metas) e o que sobra.
+function reguaDoMes(r) {
+  const partes = [
+    { classe: 'gastos', nome: 'Gastos e faturas', valor: r.gastos },
+    { classe: 'contas', nome: 'Contas a pagar', valor: r.totalContasPendentes },
+    { classe: 'metas', nome: 'Guardado nas metas', valor: Math.max(0, r.guardado) },
+    { classe: 'sobra', nome: r.saldo < 0 ? 'Falta para fechar o mês' : 'Sobra', valor: Math.abs(r.saldo) },
+  ].filter((p) => p.valor > 0);
+  const negativo = r.saldo < 0;
+  const descricao = partes.map((p) => `${p.nome}: ${dinheiro(p.valor)}`).join(', ');
+  return `
+    <section class="mes-resumo">
+      <p class="mes-rotulo">${negativo ? 'Pelo previsto, faltam' : 'Sobra prevista'} em ${nomeMes(S.mes, false)}</p>
+      <p class="mes-saldo${negativo ? ' negativo' : ''}">${dinheiro(Math.abs(r.saldo))}</p>
+      <div class="regua${negativo ? ' estourou' : ''}" role="img" aria-label="Entrou ${dinheiro(r.totalReceitas)}. ${esc(descricao)}">
+        ${partes.map((p) => `<span class="seg ${p.classe}${negativo && p.classe === 'sobra' ? ' falta' : ''}" style="flex-grow:${Math.round(p.valor * 100)}"></span>`).join('')}
+      </div>
+      <dl class="regua-legenda">
+        <div><dt><i class="amostra entrou"></i>Entrou</dt><dd>${dinheiro(r.totalReceitas)}</dd></div>
+        ${partes.map((p) => `<div><dt><i class="amostra ${p.classe}${negativo && p.classe === 'sobra' ? ' falta' : ''}"></i>${p.nome}</dt><dd>${dinheiro(p.valor)}</dd></div>`).join('')}
+      </dl>
+      ${r.aPagar ? `<p class="mes-nota">Ainda falta pagar <strong>${dinheiro(r.aPagar)}</strong> este mês, entre faturas e contas.</p>` : ''}
+    </section>`;
+}
+
 function gerarAlertas(r) {
   const d = S.dados;
   const lista = [];
@@ -286,32 +311,16 @@ function telaInicio() {
   const atrasadas = S.mes === compAtual() ? faturasAtrasadas(d, r.parcelas) : [];
   const vencimentos = [
     ...atrasadas.map((f) => ({ tipo: 'fatura', data: f.vencimento, item: f })),
-    ...r.faturas.filter((f) => f.total > 0).map((f) => ({ tipo: 'fatura', data: f.vencimento, item: f })),
+    // Uma fatura atrasada do próprio mês já veio em "atrasadas": não repete.
+    ...r.faturas.filter((f) => f.total > 0 && !atrasadas.some((x) => x.cartao.id === f.cartao.id && x.comp === f.comp))
+      .map((f) => ({ tipo: 'fatura', data: f.vencimento, item: f })),
     ...r.contas.map((c) => ({ tipo: 'conta', data: c.vencimento, item: c })),
   ].sort((a, b) => a.data.localeCompare(b.data));
 
   const categorias = Object.entries(r.porCategoria).sort((a, b) => b[1] - a[1]);
   const maiorGasto = categorias[0]?.[1] || 0;
-  const partesSaldo = [
-    `${dinheiro(r.totalReceitas)} de entradas`,
-    `− ${dinheiro(r.gastos)} de gastos e faturas`,
-    r.totalContasPendentes ? `− ${dinheiro(r.totalContasPendentes)} de contas a pagar` : '',
-    r.guardado ? `− ${dinheiro(r.guardado)} guardados nas metas` : '',
-  ].filter(Boolean).join(' ');
-
   return `
-    <section class="destaque ${r.saldo < 0 ? 'negativo' : ''}">
-      <span class="rotulo">Saldo previsto em ${nomeMes(S.mes, false)}</span>
-      <strong class="valor-grande">${dinheiro(r.saldo)}</strong>
-      <span class="conta-saldo">${partesSaldo}</span>
-    </section>
-
-    <section class="numeros">
-      <div class="numero"><span class="rotulo">Entradas</span><strong class="positivo">${dinheiro(r.totalReceitas)}</strong></div>
-      <div class="numero"><span class="rotulo">Gastos do mês</span><strong>${dinheiro(r.gastos)}</strong></div>
-      <div class="numero"><span class="rotulo">Falta pagar</span><strong class="${r.aPagar ? 'alerta-texto' : ''}">${dinheiro(r.aPagar)}</strong></div>
-      <div class="numero"><span class="rotulo">Guardado no mês</span><strong class="roxo-texto">${dinheiro(r.guardado)}</strong></div>
-    </section>
+    ${reguaDoMes(r)}
 
     ${alertas.length ? `
     <section class="bloco">
@@ -386,7 +395,7 @@ function linhaVencimento({ tipo, item }) {
     return `
       <li class="linha${pago ? ' feito' : ''}">
         <span class="bolinha" style="background:${esc(item.cartao.cor)}"></span>
-        <div class="linha-texto"><strong>Fatura ${esc(item.cartao.nome)}</strong><span class="sutil">${nomeMes(item.comp, false)} · ${dataCurta(item.vencimento)} ${chip}${item.parcial ? ` · pago ${dinheiro(item.pago)}` : ''}</span></div>
+        <div class="linha-texto"><strong>Fatura ${esc(item.cartao.nome)}</strong><span class="sutil">${nomeMes(item.comp, false)}, dia ${dataCurta(item.vencimento)} ${chip}${item.parcial ? ` já pago ${dinheiro(item.pago)}` : ''}</span></div>
         <div class="linha-valor direita"><strong>${dinheiro(item.parcial ? item.aPagar : item.total)}</strong>${item.parcial ? '<span class="sutil pequeno">falta</span>' : ''}</div>
         <button class="btn-check${pago ? ' marcado' : ''}" data-acao="pagar-fatura" data-cartao="${item.cartao.id}" data-comp="${item.comp}" aria-label="${rotuloBotao}" title="${rotuloBotao}">${icone('check')}</button>
       </li>`;
@@ -427,29 +436,18 @@ function telaLancamentos() {
       </div>
       <input class="busca" type="search" placeholder="Buscar por descrição ou categoria" value="${esc(S.busca)}" data-campo="busca" aria-label="Buscar">
       <div class="totais"><span>Entradas <strong class="positivo">${dinheiro(entradas)}</strong></span><span>Saídas <strong>${dinheiro(saidas)}</strong></span></div>
-      ${itens.length ? `<ul class="lista">${itens.map((i) => {
-    let detalhe = `${dataCurta(i.data)} · ${esc(categoria(i.lanc.categoria).nome)}`;
-    const cartao = S.dados.cartoes.find((c) => c.id === i.lanc.cartao_id);
-    if (i.lanc.tipo === 'despesa' && cartao) {
-      const ps = parcelasDe(i.lanc, cartao);
-      detalhe = `${dataCurta(i.data)} · ${esc(cartao.nome)} · ${ps.length > 1
-        ? `${ps.length}x de ${dinheiro(ps[ps.length - 1].valor)} · faturas de ${mesCurto(ps[0].competencia)} a ${mesCurto(ps[ps.length - 1].competencia)}`
-        : `fatura de ${mesCurto(ps[0].competencia)}`}`;
-    } else if (i.lanc.tipo === 'despesa') detalhe += ` · ${nomeForma(formaDe(i.lanc))}`;
-    return `
-        <li class="linha clicavel${i.lanc.tipo === 'despesa' && lancamentoPago(i.lanc) ? ' feito' : ''}" data-acao="editar-lancamento" data-id="${i.lanc.id}" tabindex="0" role="button">
-          ${i.lanc.tipo === 'despesa' ? bolinhaPago(i.lanc) : `<span class="bolinha" style="background:${esc(corDoLancamento(i.lanc))}"></span>`}
-          <div class="linha-texto"><strong>${esc(i.lanc.descricao)}</strong><span class="sutil">${detalhe}</span></div>
-          <strong class="linha-valor ${i.lanc.tipo === 'receita' ? 'positivo' : ''}">${i.lanc.tipo === 'receita' ? '+' : '−'} ${dinheiro(i.valor)}</strong>
-        </li>`;
-  }).join('')}</ul>` : '<p class="vazio">Nenhum lançamento por aqui.</p>'}
+      ${itens.length ? `<div class="dias">${porDia(itens).map(([dia, doDia]) => `
+        <section class="dia">
+          <h3 class="dia-titulo"><span>${nomeDia(dia)}</span><span class="dia-total">${dinheiro(Math.abs(soma(doDia.map((i) => (i.lanc.tipo === 'receita' ? 1 : -1) * i.valor))))}</span></h3>
+          <ul class="lista">${doDia.map(linhaLancamento).join('')}</ul>
+        </section>`).join('')}</div>` : `<p class="vazio">Nada lançado em ${nomeMes(S.mes, false)}${S.filtro !== 'todos' || busca ? ' com esse filtro' : ''}. <button class="link" data-acao="novo-lancamento">Lançar agora</button></p>`}
       ${parcelasAntigas.length && ['todos', 'credito'].includes(S.filtro) && !busca ? `
       <details class="parcelas-antigas">
         <summary>Parcelas de compras de outros meses que vencem em ${nomeMes(S.mes, false)} (${dinheiro(soma(parcelasAntigas.map((p) => p.valor)))})</summary>
         <ul class="lista compacta">${parcelasAntigas.map((p) => `
           <li class="linha clicavel" data-acao="editar-lancamento" data-id="${p.lanc.id}" tabindex="0" role="button">
             <span class="bolinha" style="background:${esc(p.cartao.cor)}"></span>
-            <div class="linha-texto"><strong>${esc(p.lanc.descricao)}</strong><span class="sutil">${esc(p.cartao.nome)} · parcela ${p.numero}/${p.total} · comprado em ${dataCurta(p.lanc.data)}/${p.lanc.data.slice(2, 4)}</span></div>
+            <div class="linha-texto"><strong>${esc(p.lanc.descricao)}</strong><span class="sutil">${esc(p.cartao.nome)}, parcela ${p.numero} de ${p.total}, comprado em ${dataCurta(p.lanc.data)}/${p.lanc.data.slice(2, 4)}</span></div>
             <strong class="linha-valor">− ${dinheiro(p.valor)}</strong>
           </li>`).join('')}
         </ul>
@@ -530,7 +528,7 @@ function telaEntradas() {
         ${lista.length ? `<ul class="lista">${lista.map((l) => `
           <li class="linha clicavel" data-acao="editar-lancamento" data-id="${l.id}" tabindex="0" role="button">
             <span class="bolinha" style="background:var(--positivo)"></span>
-            <div class="linha-texto"><strong>${esc(l.descricao)}</strong><span class="sutil">${dataCurta(l.data)} · ${esc(categoria(l.categoria).nome)}</span></div>
+            <div class="linha-texto"><strong>${esc(l.descricao)}</strong><span class="sutil">${esc(categoria(l.categoria).nome)}, dia ${dataCurta(l.data)}</span></div>
             <strong class="linha-valor positivo">+ ${dinheiro(l.valor)}</strong>
           </li>`).join('')}</ul>` : `<p class="vazio">Nenhuma entrada em ${nomeMes(S.mes, false)}. <button class="link" data-acao="nova-entrada">Lançar uma entrada</button></p>`}
       </section>
@@ -551,6 +549,46 @@ function telaEntradas() {
         </ul>
       </section>
     </div>`;
+}
+
+// Agrupa por dia, do mais recente para o mais antigo.
+function porDia(itens) {
+  const grupos = new Map();
+  for (const i of itens) {
+    if (!grupos.has(i.data)) grupos.set(i.data, []);
+    grupos.get(i.data).push(i);
+  }
+  return [...grupos.entries()];
+}
+
+const DIAS_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+function nomeDia(iso) {
+  const dias = diasAte(iso);
+  const [a, m, d] = iso.split('-').map(Number);
+  const extenso = `${d} de ${MESES[m - 1]}`;
+  if (dias === 0) return `Hoje, ${extenso}`;
+  if (dias === -1) return `Ontem, ${extenso}`;
+  const semana = DIAS_SEMANA[new Date(a, m - 1, d).getDay()];
+  return `${semana[0].toUpperCase()}${semana.slice(1)}, ${extenso}`;
+}
+
+function linhaLancamento(i) {
+  const l = i.lanc;
+  const cartao = S.dados.cartoes.find((c) => c.id === l.cartao_id);
+  let detalhe = categoria(l.categoria).nome;
+  if (l.tipo === 'despesa' && cartao) {
+    const ps = parcelasDe(l, cartao);
+    detalhe = ps.length > 1
+      ? `${cartao.nome}, ${ps.length}x de ${dinheiro(ps[ps.length - 1].valor)} (${mesCurto(ps[0].competencia)} a ${mesCurto(ps[ps.length - 1].competencia)})`
+      : `${cartao.nome}, fatura de ${mesCurto(ps[0].competencia)}`;
+  } else if (l.tipo === 'despesa') detalhe += `, ${nomeForma(formaDe(l)).toLowerCase()}`;
+  const receita = l.tipo === 'receita';
+  return `
+    <li class="linha clicavel${!receita && lancamentoPago(l) ? ' feito' : ''}" data-acao="editar-lancamento" data-id="${l.id}" tabindex="0" role="button">
+      ${receita ? `<span class="bolinha" style="background:${esc(corDoLancamento(l))}"></span>` : bolinhaPago(l)}
+      <div class="linha-texto"><strong>${esc(l.descricao)}</strong><span class="sutil">${esc(detalhe)}</span></div>
+      <strong class="linha-valor ${receita ? 'positivo' : ''}">${receita ? '+' : '−'} ${dinheiro(i.valor)}</strong>
+    </li>`;
 }
 
 /* ---------- Cartões ---------- */
@@ -575,8 +613,8 @@ function telaCartoes() {
           <div class="plastico-topo"><strong>${esc(c.nome)}</strong><button class="btn-icone claro" data-acao="editar-cartao" data-id="${c.id}" aria-label="Editar cartão">${icone('editar')}</button></div>
           <span class="rotulo">Fatura de ${nomeMes(S.mes, false)}</span>
           <strong class="valor-grande">${dinheiro(f.total)}</strong>
-          ${f.parcial ? `<span class="plastico-pago">pago ${dinheiro(f.pago)} · falta ${dinheiro(f.aPagar)}</span>` : ''}
-          <span class="plastico-datas">fecha ${dataCurta(f.fechamento)} · vence ${dataCurta(f.vencimento)}</span>
+          ${f.parcial ? `<span class="plastico-pago">Já pago ${dinheiro(f.pago)}, falta ${dinheiro(f.aPagar)}</span>` : ''}
+          <span class="plastico-datas">Fecha ${dataCurta(f.fechamento)}, vence ${dataCurta(f.vencimento)}</span>
         </div>
         <div class="fatura-corpo">
           <div class="fatura-status">
@@ -606,7 +644,7 @@ function telaCartoes() {
             <li class="linha clicavel" data-acao="editar-lancamento" data-id="${x.lanc.id}" tabindex="0" role="button">
               <div class="linha-texto">
                 <strong>${esc(x.lanc.descricao)}</strong>
-                <span class="sutil">${x.total}x de ${dinheiro(x.valorParcela)} · ${x.pagas} de ${x.total} pagas · termina em ${mesCurto(x.ultima)}</span>
+                <span class="sutil">${x.total}x de ${dinheiro(x.valorParcela)}, ${x.pagas} de ${x.total} pagas, termina em ${mesCurto(x.ultima)}</span>
               </div>
               <div class="linha-valor direita"><strong>${dinheiro(x.restante)}</strong><span class="sutil pequeno">falta</span></div>
             </li>`).join('')}
@@ -622,7 +660,7 @@ function telaCartoes() {
     const rotulo = quitada ? 'Desmarcar esta compra' : 'Marcar esta compra como paga';
     return `
               <li class="linha clicavel${quitada ? ' feito' : ''}" data-acao="editar-lancamento" data-id="${i.lanc.id}" tabindex="0" role="button">
-                <div class="linha-texto"><strong>${esc(i.lanc.descricao)}</strong><span class="sutil">${dataCurta(i.lanc.data)}${i.total > 1 ? ` · parcela ${i.numero}/${i.total}` : ' · à vista'}</span></div>
+                <div class="linha-texto"><strong>${esc(i.lanc.descricao)}</strong><span class="sutil">${dataCurta(i.lanc.data)}, ${i.total > 1 ? `parcela ${i.numero} de ${i.total}` : 'à vista'}</span></div>
                 <strong class="linha-valor">${dinheiro(i.valor)}</strong>
                 <button class="btn-check pequeno${quitada ? ' marcado' : ''}" data-acao="pagar-item" data-lanc="${i.lanc.id}" data-comp="${i.competencia}" aria-label="${rotulo}" title="${travada ? 'Já está paga' : rotulo}" ${travada ? 'disabled' : ''}>${icone('check')}</button>
               </li>`;
@@ -682,7 +720,7 @@ function telaSimular() {
         ${sim.modo === 'parcelado' ? `<label>Em quantas parcelas?<input type="number" name="parcelas" min="2" max="48" value="${esc(sim.parcelas)}"></label>` : ''}` : ''}
         ${sim.tipo === 'pagamento' && cartao ? (abertas.length ? `
         <label>Qual fatura<select name="fatura">
-          ${abertas.map((f) => `<option value="${f.comp}" ${f.comp === sim.fatura ? 'selected' : ''}>${nomeMes(f.comp)} · falta ${BRL.format(f.aPagar)}</option>`).join('')}
+          ${abertas.map((f) => `<option value="${f.comp}" ${f.comp === sim.fatura ? 'selected' : ''}>${nomeMes(f.comp)} (falta ${BRL.format(f.aPagar)})</option>`).join('')}
         </select></label>` : '<p class="dica">Este cartão não tem fatura com valor a pagar.</p>') : ''}
       </form>
     </section>
