@@ -7,13 +7,10 @@
 # Roda sozinho quando algo muda em app_flet/, ou à mão em: Actions > "App iPhone (IPA)" > Run workflow.
 name: App iPhone (IPA)
 
+# Só roda quando alguém manda rodar (Actions > "App iPhone (IPA)" > Run workflow).
+# Deixou de rodar sozinho: a geração ainda esbarra na exigência de conta de desenvolvedor da Apple.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "app_flet/**"
-      - ".github/workflows/ipa.yml"
 
 concurrency:
   group: ipa
