@@ -2,7 +2,7 @@
 supabase/.segredos-avisos.txt
 supabase/avisos.sql
 
-# Gerado por publicar-avisos.ps1 a partir de js/finance.js
+# Gerado por scripts/publicar-avisos.ps1 a partir de site/js/finance.js
 supabase/functions/avisos/finance.mjs
 
 # Cache e configuração local
@@ -16,3 +16,4 @@ app_flet/.venv/
 __pycache__/
 *.pyc
 app_flet/build/
+app_flet/.flet/

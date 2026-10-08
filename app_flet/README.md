@@ -45,7 +45,7 @@ As dependências e a permissão de biometria já estão no `pyproject.toml`.
 ## Testes
 
 As regras (faturas, parcelas, limite, saldo, metas) estão em `financas_app/regras.py`, traduzidas
-de `js/finance.js`. O teste compara as duas com dados aleatórios, para os dois apps darem sempre
+de `site/js/finance.js`. O teste compara as duas com dados aleatórios, para os dois apps darem sempre
 os mesmos valores:
 
 ```

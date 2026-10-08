@@ -1,6 +1,6 @@
 """Regras financeiras: datas, faturas, parcelas, limites e resumo do mês.
 
-Tradução fiel de js/finance.js (o site), para os dois apps darem os mesmos valores.
+Tradução fiel de site/js/finance.js (o site), para os dois apps darem os mesmos valores.
 "Competência" é o mês no formato AAAA-MM. A fatura de um cartão é identificada pelo mês em que VENCE.
 Os registros (`d`) são os mesmos dicionários que vêm do Supabase: d["cartoes"], d["lancamentos"], ...
 """

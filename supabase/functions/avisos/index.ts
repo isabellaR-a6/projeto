@@ -1,7 +1,7 @@
 // Função "avisos": manda notificação no celular do que vence hoje ou amanhã.
 // - Chamada pelo agendamento diário (pg_cron, 8h de Brasília) com o cabeçalho x-cron-secret.
 // - Chamada pelo app com o login da usuária para mandar uma notificação de teste.
-// finance.mjs é uma cópia de js/finance.js gerada por publicar-avisos.ps1 (mesmas regras do app).
+// finance.mjs é uma cópia de site/js/finance.js gerada por scripts/publicar-avisos.ps1 (mesmas regras do app).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { compAtual, contasDoMes, fatura, hoje, somarDias, somarMeses, todasParcelas } from './finance.mjs';

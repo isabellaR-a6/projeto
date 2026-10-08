@@ -6,7 +6,7 @@ Funciona no PC e no celular. É só HTML, CSS e JavaScript, sem instalar nada.
 
 ## Testar agora (modo de teste)
 
-Com `js/config.js` em branco, o app roda sem login e guarda os dados **só no navegador** em que você abriu. Serve para experimentar.
+Com `site/js/config.js` em branco, o app roda sem login e guarda os dados **só no navegador** em que você abriu. Serve para experimentar.
 
 Para abrir no PC, rode na pasta do projeto:
 
@@ -22,7 +22,7 @@ e acesse http://localhost:5520.
 2. No projeto, abra **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**.
 3. Crie o seu usuário: **Authentication → Users → Add user → Create new user**. Informe seu e-mail e uma senha forte e marque **Auto Confirm User**.
 4. **Bloqueie novos cadastros**: em **Authentication → Sign In / Providers**, desligue **Allow new users to sign up** e salve. Assim ninguém mais consegue criar conta, nem tendo o link do app.
-5. Em **Project Settings → API** (ou **Data API**), copie a **Project URL** e a chave **anon / publishable** e cole em `js/config.js`:
+5. Em **Project Settings → API** (ou **Data API**), copie a **Project URL** e a chave **anon / publishable** e cole em `site/js/config.js`:
 
    ```js
    window.CONFIG = {
@@ -48,17 +48,17 @@ A partir daí, todo login pede a senha **e** o código do app autenticador. Se t
 
 **https://minhas-financas-isa.netlify.app**.
 
-Para publicar uma atualização: botão direito em `publicar.ps1` → **Executar com o PowerShell**. Precisa do Node instalado e da conta do Netlify logada no computador; se não estiver, rode `npx netlify-cli login` antes.
+Para publicar uma atualização: botão direito em `scripts/publicar.ps1` → **Executar com o PowerShell**. Precisa do Node instalado e da conta do Netlify logada no computador; se não estiver, rode `npx netlify-cli login` antes.
 
 ## Usar no celular
 
 O app precisa estar publicado em um endereço na internet. O jeito mais fácil:
 
 1. Entre em https://app.netlify.com/drop (crie uma conta grátis).
-2. Arraste a pasta `financas` inteira para a página.
+2. Arraste a pasta `site` para a página.
 3. O Netlify gera um link (dá para trocar o nome em *Site configuration*). Abra esse link no celular, entre e use **Adicionar à tela inicial** (no Android, pelo menu do Chrome; no iPhone, pelo botão Compartilhar do Safari). Ele passa a abrir como um aplicativo.
 
-Para atualizar o site depois, rode `empacotar.ps1` (botão direito → *Executar com o PowerShell*). Ele cria `financas-site.zip` na pasta Documentos. Arraste esse zip em **Deploys** no Netlify.
+Para atualizar o site depois, rode `scripts/empacotar.ps1` (botão direito → *Executar com o PowerShell*). Ele cria `financas-site.zip` na pasta Documentos. Arraste esse zip em **Deploys** no Netlify.
 
 Os seus dados ficam no Supabase, não nos arquivos do site.
 

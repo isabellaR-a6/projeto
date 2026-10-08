@@ -1,4 +1,4 @@
-"""Confere que financas_app/regras.py dá os mesmos números que js/finance.js (o site).
+"""Confere que financas_app/regras.py dá os mesmos números que site/js/finance.js (o site).
 
 Roda as duas versões com os mesmos dados (o JS pelo Node) e compara campo a campo.
 Uso:  python -m pytest testes   (ou)   python testes/test_regras_iguais_ao_site.py
@@ -13,7 +13,7 @@ RAIZ = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 from financas_app import regras as R  # noqa: E402
 
-FINANCE_JS = RAIZ.parent / "js" / "finance.js"
+FINANCE_JS = RAIZ.parent / "site" / "js" / "finance.js"
 
 
 def dados_de_exemplo(semente: int) -> dict:
