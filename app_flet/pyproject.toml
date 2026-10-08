@@ -23,6 +23,10 @@ copyright = "Isabella Radael"
 [tool.flet.app]
 path = "."
 
+# iPhone: a Apple exige explicar o uso do Face ID (aparece na primeira vez que o app pede).
+[tool.flet.ios.info]
+NSFaceIDUsageDescription = "Use o Face ID para abrir o Minhas Finanças. O app não vê nem guarda seu rosto: quem confere é o iPhone."
+
 # A biometria do Android precisa desta permissão (a leitura é feita pelo próprio celular).
 [tool.flet.android.permission]
 "android.permission.USE_BIOMETRIC" = true

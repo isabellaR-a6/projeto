@@ -1,0 +1,62 @@
+# Gera o app de iPhone (.ipa sem assinatura) num Mac do GitHub, para instalar pelo SideStore.
+# O SideStore assina o .ipa com o seu ID Apple na hora de instalar.
+#
+# Roda sozinho quando algo muda em app_flet/, ou à mão em: Actions > "App iPhone (IPA)" > Run workflow.
+# O arquivo fica em: Actions > a execução > Artifacts > MinhasFinancas-ipa.
+name: App iPhone (IPA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app_flet/**"
+      - ".github/workflows/ipa.yml"
+
+# Só um build por vez (Mac na nuvem gasta mais minutos do plano gratuito).
+concurrency:
+  group: ipa
+  cancel-in-progress: true
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app_flet
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar o Flet
+        run: pip install "flet==1.0.3" "flet-cli==1.0.3"
+
+      - name: Gerar o app (sem assinatura)
+        env:
+          PYTHONUTF8: "1"
+        run: >-
+          flet build ipa --yes --no-rich-output
+          --project minhas-financas
+          --product "Minhas Finanças"
+          --org br.com.minhasfinancas
+          --build-number ${{ github.run_number }}
+          --verbose
+
+      - name: Montar o .ipa a partir do arquivo do Xcode
+        run: |
+          ARQUIVO=$(find build -name "*.xcarchive" -type d | head -1)
+          if [ -z "$ARQUIVO" ]; then echo "Não achei o .xcarchive"; find build -maxdepth 3; exit 1; fi
+          rm -rf Payload && mkdir Payload
+          cp -R "$ARQUIVO/Products/Applications/"*.app Payload/
+          zip -qry MinhasFinancas.ipa Payload
+          ls -lh MinhasFinancas.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MinhasFinancas-ipa
+          path: app_flet/MinhasFinancas.ipa
+          retention-days: 30
