@@ -1,8 +1,10 @@
-# Gera o app de iPhone (.ipa sem assinatura) num Mac do GitHub, para instalar pelo SideStore.
-# O SideStore assina o .ipa com o seu ID Apple na hora de instalar.
+# Gera o app de iPhone (.ipa sem assinatura) num Mac do GitHub e publica numa "Release",
+# junto com a fonte do SideStore. O SideStore assina o .ipa com o seu ID Apple ao instalar.
+#
+# Fonte para colocar no SideStore (sempre aponta para a versão mais nova):
+#   https://github.com/isabellaR-a6/projeto/releases/latest/download/fonte.json
 #
 # Roda sozinho quando algo muda em app_flet/, ou à mão em: Actions > "App iPhone (IPA)" > Run workflow.
-# O arquivo fica em: Actions > a execução > Artifacts > MinhasFinancas-ipa.
 name: App iPhone (IPA)
 
 on:
@@ -13,10 +15,12 @@ on:
       - "app_flet/**"
       - ".github/workflows/ipa.yml"
 
-# Só um build por vez (Mac na nuvem gasta mais minutos do plano gratuito).
 concurrency:
   group: ipa
   cancel-in-progress: true
+
+permissions:
+  contents: write   # para criar a Release com o .ipa e a fonte
 
 jobs:
   ipa:
@@ -50,10 +54,68 @@ jobs:
         run: |
           ARQUIVO=$(find build -name "*.xcarchive" -type d | head -1)
           if [ -z "$ARQUIVO" ]; then echo "Não achei o .xcarchive"; find build -maxdepth 3; exit 1; fi
-          rm -rf Payload && mkdir Payload
-          cp -R "$ARQUIVO/Products/Applications/"*.app Payload/
+          APP=$(ls -d "$ARQUIVO/Products/Applications/"*.app | head -1)
+          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
           zip -qry MinhasFinancas.ipa Payload
           ls -lh MinhasFinancas.ipa
+          PLIST="$APP/Info.plist"
+          echo "BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" >> "$GITHUB_ENV"
+          echo "VERSAO=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" >> "$GITHUB_ENV"
+          echo "MIN_IOS=$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST" 2>/dev/null || echo 13.0)" >> "$GITHUB_ENV"
+          echo "TAMANHO=$(stat -f%z MinhasFinancas.ipa)" >> "$GITHUB_ENV"
+
+      - name: Escrever a fonte do SideStore (fonte.json)
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ios-${{ github.run_number }}
+          BUILD: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime
+          e = os.environ
+          base = f"https://github.com/{e['REPO']}"
+          fonte = {
+              "name": "Minhas Finanças",
+              "identifier": "br.com.minhasfinancas.fonte",
+              "subtitle": "Controle financeiro pessoal",
+              "iconURL": f"https://raw.githubusercontent.com/{e['REPO']}/main/app_flet/assets/icon.png",
+              "tintColor": "5b2a86",
+              "apps": [{
+                  "name": "Minhas Finanças",
+                  "bundleIdentifier": e["BUNDLE_ID"],
+                  "developerName": "Isabella Radael",
+                  "subtitle": "Cartões, faturas, parcelas e metas",
+                  "localizedDescription": "Controle financeiro pessoal feito em Python com Flet.",
+                  "iconURL": f"https://raw.githubusercontent.com/{e['REPO']}/main/app_flet/assets/icon.png",
+                  "tintColor": "5b2a86",
+                  "versions": [{
+                      "version": e["VERSAO"],
+                      "buildVersion": e["BUILD"],
+                      "date": datetime.date.today().isoformat(),
+                      "localizedDescription": f"Versão {e['VERSAO']} ({e['BUILD']}).",
+                      "downloadURL": f"{base}/releases/download/{e['TAG']}/MinhasFinancas.ipa",
+                      "size": int(e["TAMANHO"]),
+                      "minOSVersion": e["MIN_IOS"],
+                  }],
+                  "appPermissions": {"entitlements": [], "privacy": {
+                      "NSFaceIDUsageDescription": "Use o Face ID para abrir o Minhas Finanças."}},
+              }],
+              "news": [],
+          }
+          json.dump(fonte, open("fonte.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          print(open("fonte.json", encoding="utf-8").read())
+          PY
+
+      - name: Publicar a Release (.ipa + fonte)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "ios-${{ github.run_number }}"
+          MinhasFinancas.ipa fonte.json
+          --repo "${{ github.repository }}"
+          --title "App iPhone ${{ env.VERSAO }} (${{ github.run_number }})"
+          --notes "Instale pelo SideStore com a fonte: https://github.com/${{ github.repository }}/releases/latest/download/fonte.json"
+          --latest
 
       - uses: actions/upload-artifact@v4
         with:

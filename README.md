@@ -46,7 +46,7 @@ A partir daí, todo login pede a senha **e** o código do app autenticador. Se t
 
 ## Endereço do app
 
-**https://minhas-financas-isa.netlify.app** (Netlify, conta isabella.radael09@gmail.com).
+**https://minhas-financas-isa.netlify.app**.
 
 Para publicar uma atualização: botão direito em `publicar.ps1` → **Executar com o PowerShell**. Precisa do Node instalado e da conta do Netlify logada no computador; se não estiver, rode `npx netlify-cli login` antes.
 
