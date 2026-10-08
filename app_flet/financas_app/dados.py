@@ -132,7 +132,8 @@ class BancoSupabase:
             raise _traduzir(e) from e
 
     async def sair(self) -> None:
-        await self.sb.auth.sign_out()
+        # "local": sai só deste aparelho (o padrão desconectaria o site e o celular também).
+        await self.sb.auth.sign_out({"scope": "local"})
 
     async def carregar_tudo(self) -> dict:
         async def uma(t: str) -> list:

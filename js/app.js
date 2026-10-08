@@ -67,6 +67,7 @@ const ICONES = {
   simular: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h4"/>',
   entradas: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/>',
   sino: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  digital: '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
   escudo: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
 };
 const icone = (nome, cls = 'ic') =>
@@ -1210,14 +1211,155 @@ async function testarAvisos() {
   }
 }
 
+/* ---------- Trava por biometria (Passkey / WebAuthn) ----------
+   O navegador pede ao próprio aparelho para confirmar que é a dona (digital, rosto, Windows Hello).
+   O site NUNCA recebe rosto, digital ou foto: guarda só o identificador da chave criada no aparelho,
+   e o aparelho responde "confirmado" ou não. */
+const CHAVE_TRAVA = 'financas-trava-biometria';
+const TRAVAR_DEPOIS_DE_MS = 60 * 1000;
+let saiuEm = null;
+let travado = false;
+
+const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const deB64url = (txt) => Uint8Array.from(atob(txt.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (txt.length % 4)) % 4)), (c) => c.charCodeAt(0));
+const aleatorio = (n) => crypto.getRandomValues(new Uint8Array(n));
+
+function travaSalva() {
+  try { return JSON.parse(localStorage.getItem(CHAVE_TRAVA)); } catch { return null; }
+}
+
+async function biometriaDisponivel() {
+  try {
+    return Boolean(window.PublicKeyCredential)
+      && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch { return false; }
+}
+
+async function ativarTrava() {
+  try {
+    const email = await Store.email();
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        rp: { name: 'Minhas Finanças' },
+        user: { id: aleatorio(16), name: email || 'Minhas Finanças', displayName: 'Minhas Finanças' },
+        challenge: aleatorio(32),
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+        attestation: 'none',
+        timeout: 60000,
+      },
+    });
+    localStorage.setItem(CHAVE_TRAVA, JSON.stringify({ id: b64url(cred.rawId), criadaEm: hoje() }));
+    toast('Trava por biometria ligada neste aparelho');
+    abrirSeguranca();
+  } catch (e) {
+    console.warn(e);
+    toast(e.name === 'NotAllowedError' ? 'Ativação cancelada.' : 'Não foi possível ativar a biometria neste aparelho.', true);
+  }
+}
+
+function desativarTrava() {
+  localStorage.removeItem(CHAVE_TRAVA);
+  toast('Trava por biometria desligada neste aparelho');
+  abrirSeguranca();
+}
+
+async function confirmarBiometria() {
+  const trava = travaSalva();
+  if (!trava) return false;
+  try {
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: aleatorio(32),
+        allowCredentials: [{ type: 'public-key', id: deB64url(trava.id) }],
+        userVerification: 'required',
+        timeout: 60000,
+      },
+    });
+    return true;
+  } catch (e) {
+    console.warn(e);
+    return false;
+  }
+}
+
+function telaTrava(erro = '') {
+  travado = true;
+  $('#app').innerHTML = `
+    <div class="login">
+      <div class="login-caixa trava">
+        <button class="botao-digital" id="usar-biometria" aria-label="Desbloquear com a biometria">${icone('digital', 'ic grande')}</button>
+        <h1>Minhas Finanças está travado</h1>
+        <p class="sutil">Confirme que é você com a biometria deste aparelho. O site não vê nem guarda seu rosto ou sua digital.</p>
+        <button class="btn primario largo" id="usar-biometria-2">Desbloquear</button>
+        <form id="form-trava-senha" hidden>
+          <label>Sua senha<input type="password" name="senha" autocomplete="current-password" required></label>
+          <button class="btn largo" type="submit">Desbloquear com a senha</button>
+        </form>
+        <p class="erro-login" role="alert">${esc(erro)}</p>
+        <button class="link" type="button" id="mostrar-senha">Usar minha senha</button>
+        <button class="link" type="button" id="sair-da-trava">Sair da conta</button>
+      </div>
+    </div>`;
+  const tentar = async () => {
+    if (await confirmarBiometria()) destravar();
+    else telaTrava('Não deu para confirmar. Tente de novo ou use a senha.');
+  };
+  $('#usar-biometria').addEventListener('click', tentar);
+  $('#usar-biometria-2').addEventListener('click', tentar);
+  $('#mostrar-senha').addEventListener('click', () => {
+    $('#form-trava-senha').hidden = false;
+    $('#form-trava-senha [name=senha]').focus();
+  });
+  $('#form-trava-senha').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const botao = e.target.querySelector('button');
+    botao.disabled = true;
+    botao.textContent = 'Conferindo…';
+    if (await Store.conferirSenha(e.target.senha.value)) destravar();
+    else telaTrava('Senha incorreta.');
+  });
+  $('#sair-da-trava').addEventListener('click', async () => {
+    travado = false;
+    await Store.sair();
+    telaLogin();
+  });
+}
+
+function destravar() {
+  travado = false;
+  if (S.dados) render();
+  else iniciarApp();
+}
+
+// Volta a pedir a biometria depois de um minuto com o app em segundo plano.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { saiuEm = Date.now(); return; }
+  const fora = saiuEm && Date.now() - saiuEm > TRAVAR_DEPOIS_DE_MS;
+  saiuEm = null;
+  if (fora && !travado && travaSalva() && S.dados && Store.remoto) telaTrava();
+});
+
 /* ---------- Segurança: verificação em duas etapas ---------- */
 async function abrirSeguranca() {
   abrirModal('<div class="form"><h2>Segurança</h2><p class="sutil">Carregando…</p></div>');
   try {
     const ativo = await Store.doisFatoresAtivo();
+    const temBiometria = await biometriaDisponivel();
+    const trava = travaSalva();
     abrirModal(`
       <div class="form">
-        <h2>Verificação em duas etapas</h2>
+        <h2>Trava por biometria</h2>
+        ${trava ? `
+          <p class="status-seguranca ativo">${icone('digital')} Ligada neste aparelho</p>
+          <p class="sutil">Ao abrir o app (ou voltar depois de um minuto fora), ele pede a digital, o rosto ou o PIN deste aparelho.</p>
+          <div class="form-acoes"><button type="button" class="btn perigo-texto" data-acao="desativar-trava">Desligar</button></div>`
+    : temBiometria ? `
+          <p class="sutil">Pede a digital, o rosto ou o PIN deste aparelho para abrir o app. Quem confere é o aparelho: o site não vê nem guarda nada do seu rosto ou da sua digital.</p>
+          <div class="form-acoes"><button type="button" class="btn primario" data-acao="ativar-trava">Ligar neste aparelho</button></div>`
+      : '<p class="sutil">Este aparelho ou navegador não tem biometria disponível (digital, rosto ou Windows Hello). No celular, abra o app pelo ícone da tela inicial.</p>'}
+        <hr class="divisor">
+        <h2>Código do app autenticador</h2>
         ${ativo ? `
           <p class="status-seguranca ativo">${icone('escudo')} Ativada</p>
           <p class="sutil">Para entrar, além da senha, o app pede o código do seu app autenticador. Sem ele, o banco recusa o acesso aos seus dados.</p>
@@ -1470,6 +1612,8 @@ document.addEventListener('click', async (e) => {
     case 'pagar-fatura': alternarFatura(el.dataset.cartao, el.dataset.comp); break;
     case 'exportar': exportar(); break;
     case 'seguranca': abrirSeguranca(); break;
+    case 'ativar-trava': ativarTrava(); break;
+    case 'desativar-trava': desativarTrava(); break;
     case 'avisos': abrirAvisos(); break;
     case 'ativar-avisos': ativarAvisos(); break;
     case 'desativar-avisos': desativarAvisos(); break;
@@ -1601,6 +1745,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
   try {
     if (!(await Store.usuario())) telaLogin();
     else if (await Store.precisaCodigo()) telaCodigo();
+    else if (Store.remoto && travaSalva()) telaTrava();
     else iniciarApp();
   } catch (e) {
     console.error(e);

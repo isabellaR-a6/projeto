@@ -53,7 +53,26 @@ const Store = (() => {
       const { error } = await sb.auth.signInWithPassword({ email, password: senha });
       falha(error);
     },
-    async sair() { if (remoto) await sb.auth.signOut(); },
+    // "local": sai só deste aparelho. O padrão ("global") desconectaria o celular, o notebook e o app.
+    async sair() { if (remoto) await sb.auth.signOut({ scope: 'local' }); },
+    async email() {
+      if (!remoto) return 'modo de teste';
+      const { data } = await sb.auth.getSession();
+      return data.session?.user?.email || null;
+    },
+    // Confere a senha sem mexer na sessão atual: login temporário só na memória, depois sai dele.
+    async conferirSenha(senha) {
+      if (!remoto) return true;
+      const email = await this.email();
+      if (!email) return false;
+      const temp = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, storageKey: 'financas-conferir-senha' },
+      });
+      const { error } = await temp.auth.signInWithPassword({ email, password: senha });
+      if (error) return false;
+      await temp.auth.signOut({ scope: 'local' });
+      return true;
+    },
 
     /* Avisos no celular (Web Push). */
     async salvarInscricaoPush(inscricao) {

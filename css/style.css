@@ -771,3 +771,14 @@ dialog { border-radius: 18px; box-shadow: 0 30px 80px rgba(31, 22, 48, .28); }
 .barra span.neutra { background: var(--lilas); }
 .barra span.verde { background: var(--positivo); }
 .barra.grossa { height: 10px; }
+
+/* Trava por biometria */
+.trava { text-align: center; }
+.botao-digital {
+  justify-self: center; width: 84px; height: 84px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--roxo); color: var(--superficie);
+}
+.botao-digital:hover { background: var(--roxo-forte); }
+.ic.grande { width: 44px; height: 44px; }
+.trava .link { justify-self: center; }
+.divisor { border: 0; border-top: 1px solid var(--borda); margin: .4rem 0; }
