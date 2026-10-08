@@ -1,0 +1,29 @@
+[project]
+name = "minhas-financas"
+version = "1.0.0"
+description = "Controle financeiro pessoal: cartões, faturas, parcelas, metas e simulação."
+authors = [{ name = "Isabella Radael" }]
+requires-python = ">=3.10"
+dependencies = [
+  "flet==1.0.3",
+  "supabase==2.32.0",
+  # Biometria do celular (Android/iOS) no app gerado com `flet build`
+  "flet-local-auth==1.0.3",
+  # Windows Hello no computador
+  "winrt-Windows.Security.Credentials.UI==3.2.1; sys_platform == 'win32'",
+  "winrt-Windows.Foundation==3.2.1; sys_platform == 'win32'",
+]
+
+[tool.flet]
+org = "br.com.minhasfinancas"
+product = "Minhas Finanças"
+company = "Isabella Radael"
+copyright = "Isabella Radael"
+
+[tool.flet.app]
+path = "."
+
+# A biometria do Android precisa desta permissão (a leitura é feita pelo próprio celular).
+[tool.flet.android.permission]
+"android.permission.USE_BIOMETRIC" = true
+"android.permission.INTERNET" = true
