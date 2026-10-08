@@ -42,13 +42,21 @@ jobs:
       - name: Gerar o app (sem assinatura)
         env:
           PYTHONUTF8: "1"
-        run: >-
-          flet build ipa --yes --no-rich-output
-          --project minhas-financas
-          --product "Minhas Finanças"
-          --org br.com.minhasfinancas
-          --build-number ${{ github.run_number }}
-          --verbose
+        run: |
+          set -o pipefail
+          flet build ipa --yes --no-rich-output --project minhas-financas --product "Minhas Finanças" --org br.com.minhasfinancas --build-number ${{ github.run_number }} --verbose 2>&1 | tee build.log
+
+      # Se der erro, publica as últimas linhas como "anotação" (visível sem login no repositório público),
+      # para dar para ver o motivo sem baixar o registro completo.
+      - name: Mostrar o erro
+        if: failure()
+        run: |
+          grep -iE "error|exception|failed|not found|could not|no matching|traceback" build.log | tail -n 40 > erros.txt || true
+          tail -n 40 build.log > final.txt
+          for arq in erros.txt final.txt; do
+            msg=$(tr -d '\015' < "$arq" | sed -e 's/%/%25/g' | cut -c1-300 | awk 'BEGIN{ORS="%0A"} {print}')
+            echo "::error title=$arq::$msg"
+          done
 
       - name: Montar o .ipa a partir do arquivo do Xcode
         run: |
@@ -74,11 +82,12 @@ jobs:
           import json, os, datetime
           e = os.environ
           base = f"https://github.com/{e['REPO']}"
+          icone = f"https://raw.githubusercontent.com/{e['REPO']}/main/app_flet/assets/icon.png"
           fonte = {
               "name": "Minhas Finanças",
               "identifier": "br.com.minhasfinancas.fonte",
               "subtitle": "Controle financeiro pessoal",
-              "iconURL": f"https://raw.githubusercontent.com/{e['REPO']}/main/app_flet/assets/icon.png",
+              "iconURL": icone,
               "tintColor": "5b2a86",
               "apps": [{
                   "name": "Minhas Finanças",
@@ -86,7 +95,7 @@ jobs:
                   "developerName": "Isabella Radael",
                   "subtitle": "Cartões, faturas, parcelas e metas",
                   "localizedDescription": "Controle financeiro pessoal feito em Python com Flet.",
-                  "iconURL": f"https://raw.githubusercontent.com/{e['REPO']}/main/app_flet/assets/icon.png",
+                  "iconURL": icone,
                   "tintColor": "5b2a86",
                   "versions": [{
                       "version": e["VERSAO"],
